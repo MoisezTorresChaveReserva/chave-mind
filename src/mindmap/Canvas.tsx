@@ -430,7 +430,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       id: newNodeId,
       type: 'custom',
       position: { x: spawnX, y: parent.position.y },
-      data: { label: 'Novo Nó', parent_id: parentId }
+      data: { label: '', parent_id: parentId, isNew: true }
     }
     const newEdge: Edge = {
       id: generateId(),
@@ -466,7 +466,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       id: newNodeId,
       type: 'custom',
       position: { x: node.position.x, y: node.position.y },
-      data: { label: 'Novo Nó', parent_id: node.data.parent_id }
+      data: { label: '', parent_id: node.data.parent_id, isNew: true }
     }
     setNodes(nds => {
       const nodeIndex = nds.findIndex(n => n.id === nodeId)

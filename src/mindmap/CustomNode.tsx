@@ -17,7 +17,7 @@ const pastelColors = [
 ]
 
 const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }: NodeProps) => {
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(!!data.isNew)
   const [text, setText] = useState(data.label as string || '')
   const [activeMenu, setActiveMenu] = useState<'none' | 'color' | 'image' | 'link' | 'icon'>('none')
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null)
@@ -25,14 +25,17 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   const inputRef = useRef<HTMLInputElement>(null)
   const { setNodes, setEdges } = useReactFlow()
 
-  useEffect(() => {
-    const handleClickOutside = () => {
+  const handleClickOutside = () => {
+    if (contextMenu) {
       setContextMenu(null)
       setActiveMenu('none')
     }
+  }
+
+  useEffect(() => {
     window.addEventListener('click', handleClickOutside)
     return () => window.removeEventListener('click', handleClickOutside)
-  }, [])
+  }, [contextMenu])
 
   const colorIndex = [...id].reduce((acc, char) => acc + char.charCodeAt(0), 0) % pastelColors.length
 
@@ -79,6 +82,10 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === 'Escape') {
       setIsEditing(false)
+      if (text.trim() === '') {
+        if (typeof data.onDelete === 'function') data.onDelete(id)
+        return
+      }
       if (typeof data.onChange === 'function') {
         data.onChange(id, text)
       }
@@ -87,6 +94,10 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
   const onBlur = () => {
     setIsEditing(false)
+    if (text.trim() === '') {
+      if (typeof data.onDelete === 'function') data.onDelete(id)
+      return
+    }
     if (typeof data.onChange === 'function' && text !== data.label) {
       data.onChange(id, text)
     }
