@@ -88,6 +88,14 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
   const THEME_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899', '#ffffff', '#1f2937', 'transparent']
 
+  if (data.isGhost) {
+    return (
+      <div className="w-16 h-8 bg-gray-200 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-400 dark:border-gray-600 opacity-60">
+        <Handle type="target" position={Position.Left} className="opacity-0" />
+      </div>
+    )
+  }
+
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top} className="flex flex-col gap-2 items-center mb-2 z-50">

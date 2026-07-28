@@ -622,6 +622,45 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       }
     })
 
+    // 5. Inject Drag Preview Ghost Node
+    const dropTarget = nodes.find(n => n.data.isDropTarget)
+    if (dropTarget) {
+      const children = childrenMap.get(dropTarget.id) || []
+      let ghostY = dropTarget.position.y
+      if (children.length > 0) {
+        const lastChild = nodes.find(n => n.id === children[children.length - 1])
+        if (lastChild) ghostY = lastChild.position.y + 60 // ~NODE_HEIGHT + VERTICAL_SPACING
+      }
+      
+      const ghostNodeId = 'ghost-preview-node'
+      const color = nodeColors.get(dropTarget.id) || '#e5e7eb'
+      
+      finalNodes.push({
+        id: ghostNodeId,
+        type: 'custom',
+        position: { x: dropTarget.position.x + 160, y: ghostY },
+        data: {
+          label: '',
+          isGhost: true,
+          parent_id: dropTarget.id,
+          branchColor: color,
+          isRoot: false,
+          hasChildren: false
+        },
+        hidden: false
+      } as any)
+      
+      finalEdges.push({
+        id: 'ghost-preview-edge',
+        source: dropTarget.id,
+        target: ghostNodeId,
+        type: 'bezier',
+        hidden: false,
+        animated: false,
+        style: { stroke: '#e5e7eb', strokeWidth: 3 }
+      })
+    }
+
     return { displayNodes: finalNodes, displayEdges: finalEdges }
   }, [nodes, edges])
 
