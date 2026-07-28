@@ -95,6 +95,22 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     style: { stroke: e.color || '#ec4899', strokeWidth: 3 }
   }))
 
+  // Auto-heal missing edges based on parent_id
+  defaultNodes.forEach(node => {
+    if (node.data.parent_id) {
+      const edgeExists = defaultEdges.some(e => e.target === node.id)
+      if (!edgeExists) {
+        defaultEdges.push({
+          id: generateId(),
+          source: node.data.parent_id as string,
+          target: node.id,
+          type: 'bezier',
+          style: { stroke: '#ec4899', strokeWidth: 3 }
+        })
+      }
+    }
+  })
+
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges)
   
