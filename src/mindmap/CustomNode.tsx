@@ -197,8 +197,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         className={`
           relative px-3 py-1.5 rounded-xl flex flex-col items-center justify-center w-max transition-all group border
           ${customBg ? '' : themeClass}
-          ${selected && data.isColorful ? 'ring-2 ring-[#3b82f6] shadow-sm' : ''}
-          ${selected && !data.isColorful && !customBg ? 'bg-blue-50/50 dark:bg-blue-900/30' : ''}
+          ${selected ? 'ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-gray-900 shadow-md' : ''}
           ${!data.isColorful && !selected && !customBg ? 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50' : ''}
         `}
         style={customStyle}
