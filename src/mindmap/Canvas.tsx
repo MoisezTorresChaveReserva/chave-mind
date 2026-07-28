@@ -465,7 +465,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     const newNode: Node = {
       id: newNodeId,
       type: 'custom',
-      position: { x: 0, y: 0 },
+      position: { x: node.position.x, y: node.position.y },
       data: { label: 'Novo Nó', parent_id: node.data.parent_id }
     }
     setNodes(nds => {
