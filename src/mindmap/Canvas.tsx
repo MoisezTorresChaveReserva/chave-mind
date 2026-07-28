@@ -92,7 +92,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     target: e.target,
     type: 'bezier',
     animated: e.animated,
-    style: { stroke: e.color || '#9ca3af', strokeWidth: 2 }
+    style: { stroke: e.color || '#ec4899', strokeWidth: 3 }
   }))
 
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes)
@@ -281,6 +281,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         map_id: mapId,
         source: e.source,
         target: e.target,
+        color: e.style?.stroke || '#ec4899'
       }))
       
       await supabase.from('nodes').upsert(dbNodes)
