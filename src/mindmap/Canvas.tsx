@@ -605,6 +605,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       hidden: !visibleNodeIds.has(n.id),
       data: {
         ...n.data,
+        isColorful,
         hasChildren: (childrenMap.get(n.id) || []).length > 0,
         branchColor: nodeColors.get(n.id) || '#ec4899',
         isRoot: !n.data.parent_id || !nodes.find(x => x.id === n.data.parent_id)
