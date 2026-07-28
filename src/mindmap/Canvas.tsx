@@ -569,11 +569,11 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       if (selectedNodes.length === 1) {
         const selected = selectedNodes[0]
         
-        if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+        if (e.key === 'Tab') {
           e.preventDefault()
           onAddChild(selected.id)
         } 
-        else if (e.key === 'Enter' && e.shiftKey) {
+        else if (e.key === 'Enter') {
           e.preventDefault()
           onAddSibling(selected.id)
         }
