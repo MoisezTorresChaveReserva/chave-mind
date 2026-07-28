@@ -198,7 +198,8 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           relative px-3 py-1.5 rounded-xl flex flex-col items-center justify-center w-max transition-all group border
           ${customBg ? '' : themeClass}
           ${selected ? 'ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-gray-900 shadow-md' : ''}
-          ${!data.isColorful && !selected && !customBg ? 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50' : ''}
+          ${data.isDropTarget ? 'ring-4 ring-green-500 border-dashed scale-110 shadow-2xl z-50 ring-offset-2 dark:ring-offset-gray-900 bg-green-50/50 dark:bg-green-900/30' : ''}
+          ${!data.isColorful && !selected && !customBg && !data.isDropTarget ? 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50' : ''}
         `}
         style={customStyle}
         onDoubleClick={onDoubleClick}

@@ -41,7 +41,7 @@ const generateId = () => {
 }
 
 function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode }: any) {
-  const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView } = useReactFlow()
+  const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, getIntersectingNodes } = useReactFlow()
   const { x: vpX, y: vpY, zoom: vpZoom } = useViewport()
   
   // Drag to select state
@@ -400,6 +400,78 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     setEdges(eds => [...eds, ...newEdges])
   }, [setNodes, setEdges, applyAutoLayout, takeSnapshot])
 
+  // Drag and Drop Logic
+  const onNodeDrag = useCallback((event: any, node: Node) => {
+    // Cannot drag root node
+    if (!node.data.parent_id) return
+    const intersections = getIntersectingNodes(node)
+    
+    setNodes(nds => nds.map(n => {
+      const isTarget = intersections.length > 0 && n.id === intersections[0].id
+      
+      // Cycle detection: is `n` a descendant of `node`?
+      let isDescendant = false
+      let current = n
+      while (current && current.data.parent_id) {
+        if (current.data.parent_id === node.id) { isDescendant = true; break }
+        current = nds.find(x => x.id === current.data.parent_id) as Node
+      }
+
+      return {
+        ...n,
+        data: {
+          ...n.data,
+          isDropTarget: isTarget && !isDescendant && n.id !== node.id
+        }
+      }
+    }))
+  }, [getIntersectingNodes, setNodes])
+
+  const onNodeDragStop = useCallback((event: any, node: Node) => {
+    if (!node.data.parent_id) {
+      setNodes(nds => applyAutoLayout(nds)) // Snap back root
+      return
+    }
+
+    takeSnapshot()
+    const allNodes = getNodes()
+    const targetNode = allNodes.find(n => n.data.isDropTarget)
+
+    if (targetNode) {
+      // Reparenting
+      setNodes(nds => applyAutoLayout(nds.map(n => {
+        if (n.id === node.id) {
+          return { ...n, data: { ...n.data, parent_id: targetNode.id, isDropTarget: false } }
+        }
+        return { ...n, data: { ...n.data, isDropTarget: false } }
+      })))
+
+      setEdges(eds => {
+        const filtered = eds.filter(e => e.target !== node.id)
+        return [...filtered, {
+          id: generateId(),
+          source: targetNode.id,
+          target: node.id,
+          type: 'bezier',
+          style: { stroke: '#ec4899', strokeWidth: 3 }
+        }]
+      })
+    } else {
+      // Reordering siblings based on dropped Y coordinate
+      const parentId = node.data.parent_id
+      const siblings = allNodes.filter(n => n.data.parent_id === parentId)
+      
+      // Sort siblings by Y
+      siblings.sort((a, b) => a.position.y - b.position.y)
+      
+      const newNodesList = [...allNodes].map(n => ({ ...n, data: { ...n.data, isDropTarget: false } }))
+      const withoutSiblings = newNodesList.filter((n: any) => n.data.parent_id !== parentId)
+      const finalNodes = [...withoutSiblings, ...siblings]
+      
+      setNodes(applyAutoLayout(finalNodes))
+    }
+  }, [getNodes, getEdges, setNodes, setEdges, applyAutoLayout, takeSnapshot])
+
   // Function to handle formatting changes (colors, media)
   const onChangeFormatting = useCallback((id: string, updates: any) => {
     takeSnapshot()
@@ -620,10 +692,12 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         edges={displayEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDrag={onNodeDrag}
+        onNodeDragStop={onNodeDragStop}
         onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
         nodeTypes={memoizedNodeTypes}
         connectionMode={ConnectionMode.Loose}
-        nodesDraggable={false}
+        nodesDraggable={!isCapturingMode}
         panOnDrag={!isCapturingMode}
         zoomOnDoubleClick={false}
         snapToGrid={false}
