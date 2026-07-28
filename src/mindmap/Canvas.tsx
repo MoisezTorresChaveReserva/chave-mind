@@ -600,7 +600,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     roots.forEach(r => traverse(r.id, true))
 
     // 3. Process nodes
-    let finalNodes = nodes.map(n => ({
+    let finalNodes = nodes.filter(n => n.id !== 'ghost-preview-node').map(n => ({
       ...n,
       hidden: !visibleNodeIds.has(n.id),
       data: {
@@ -612,7 +612,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     }))
 
     // 4. Process edges
-    let finalEdges = edges.map(e => {
+    let finalEdges = edges.filter(e => e.id !== 'ghost-preview-edge').map(e => {
       const targetNode = nodes.find(n => n.id === e.target)
       const color = targetNode ? (nodeColors.get(targetNode.id) || '#ec4899') : '#ec4899'
       return {

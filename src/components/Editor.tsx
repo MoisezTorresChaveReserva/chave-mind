@@ -151,9 +151,13 @@ export default function Editor({ map, initialNodes, initialEdges, user }: { map:
             </button>
             <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
             <button 
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href)
-                alert('Link copiado para a área de transferência!')
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(window.location.href)
+                  alert('Link copiado para a área de transferência!')
+                } catch (e) {
+                  prompt('Não foi possível copiar automaticamente. Copie este link manualmente:', window.location.href)
+                }
               }}
               className="text-sm px-3 py-1.5 font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
