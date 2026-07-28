@@ -233,8 +233,8 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       for (const cid of children) {
         const childHeight = getSubtreeHeight(cid)
         const childCenterY = currentY + childHeight / 2
-        // Dynamic X placement: Right edge of parent + fixed gap of 40px
-        assignPositions(cid, cx + nodeWidth + 40, childCenterY)
+        // Dynamic X placement: Right edge of parent + fixed gap of 100px
+        assignPositions(cid, cx + nodeWidth + 100, childCenterY)
         currentY += childHeight + VERTICAL_SPACING
       }
     }
@@ -370,6 +370,18 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     setNodes(nds => applyAutoLayout([...nds.map(n => ({...n, selected: false})), {...newNode, selected: true}]))
     setEdges(eds => [...eds, newEdge])
   }, [getNodes, setNodes, setEdges, applyAutoLayout, takeSnapshot])
+
+  // Auto-layout on dimension changes (e.g. text edit)
+  const onNodesChangeWrapper = useCallback((changes: any[]) => {
+    onNodesChange(changes)
+    
+    if (changes.some(c => c.type === 'dimensions')) {
+      // Small delay to let React Flow apply dimensions first
+      setTimeout(() => {
+        setNodes(nds => applyAutoLayout(nds))
+      }, 10)
+    }
+  }, [onNodesChange, setNodes, applyAutoLayout])
 
   const onAddSibling = useCallback((nodeId: string) => {
     takeSnapshot()
@@ -825,7 +837,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       <ReactFlow
         nodes={displayNodes}
         edges={displayEdges}
-        onNodesChange={onNodesChange}
+        onNodesChange={onNodesChangeWrapper}
         onEdgesChange={onEdgesChange}
         onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
         nodeTypes={memoizedNodeTypes}
