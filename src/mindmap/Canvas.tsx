@@ -488,12 +488,12 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     const intersections = getIntersectingNodes(node)
     
     // Find a target where the center of the dragged node is inside the target
-    const cx = (node.positionAbsolute?.x || node.position.x) + (node.measured?.width || 100) / 2
-    const cy = (node.positionAbsolute?.y || node.position.y) + (node.measured?.height || 40) / 2
+    const cx = ((node as any).computed?.positionAbsolute?.x || (node as any).positionAbsolute?.x || node.position.x) + (node.measured?.width || 100) / 2
+    const cy = ((node as any).computed?.positionAbsolute?.y || (node as any).positionAbsolute?.y || node.position.y) + (node.measured?.height || 40) / 2
 
     const validTarget = intersections.find(n => {
-      const nx = n.positionAbsolute?.x || n.position.x
-      const ny = n.positionAbsolute?.y || n.position.y
+      const nx = (n as any).computed?.positionAbsolute?.x || (n as any).positionAbsolute?.x || n.position.x
+      const ny = (n as any).computed?.positionAbsolute?.y || (n as any).positionAbsolute?.y || n.position.y
       const nw = n.measured?.width || 100
       const nh = n.measured?.height || 40
       return cx >= nx && cx <= nx + nw && cy >= ny && cy <= ny + nh
@@ -523,7 +523,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       // Dynamic Reordering Preview
       if (!validTarget) {
         const parentId = node.data.parent_id
-        const siblings = newNodes.filter(n => n.data.parent_id === parentId)
+        const siblings = newNodes.filter(n => (n as any).data.parent_id === parentId)
         
         // Temporarily override the dragged node's Y for sorting purposes
         const draggedIndex = siblings.findIndex(s => s.id === node.id)
@@ -533,7 +533,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
 
         siblings.sort((a, b) => a.position.y - b.position.y)
         
-        const withoutSiblings = newNodes.filter(n => n.data.parent_id !== parentId)
+        const withoutSiblings = newNodes.filter(n => (n as any).data.parent_id !== parentId)
         const orderedList = [...withoutSiblings, ...siblings]
         
         const layouted = applyAutoLayout(orderedList)
