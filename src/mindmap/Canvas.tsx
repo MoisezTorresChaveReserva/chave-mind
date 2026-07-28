@@ -456,8 +456,20 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     if (!node.data.parent_id) return
     const intersections = getIntersectingNodes(node)
     
+    // Find a target where the center of the dragged node is inside the target
+    const cx = (node.positionAbsolute?.x || node.position.x) + (node.measured?.width || 100) / 2
+    const cy = (node.positionAbsolute?.y || node.position.y) + (node.measured?.height || 40) / 2
+
+    const validTarget = intersections.find(n => {
+      const nx = n.positionAbsolute?.x || n.position.x
+      const ny = n.positionAbsolute?.y || n.position.y
+      const nw = n.measured?.width || 100
+      const nh = n.measured?.height || 40
+      return cx >= nx && cx <= nx + nw && cy >= ny && cy <= ny + nh
+    })
+    
     setNodes(nds => nds.map(n => {
-      const isTarget = intersections.length > 0 && n.id === intersections[0].id
+      const isTarget = validTarget && n.id === validTarget.id
       
       // Cycle detection: is `n` a descendant of `node`?
       let isDescendant = false
