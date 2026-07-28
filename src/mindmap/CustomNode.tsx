@@ -1,5 +1,6 @@
 import React, { memo, useState, useRef, useEffect } from 'react'
-import { Handle, Position, NodeProps, NodeToolbar, useReactFlow } from '@xyflow/react'
+import { createPortal } from 'react-dom'
+import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react'
 import { Plus, Wand2, Type, Trash2, Palette, Image as ImageIcon, Link, Link2, Smile, X } from 'lucide-react'
 
 const generateId = () => {
@@ -19,9 +20,19 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   const [isEditing, setIsEditing] = useState(false)
   const [text, setText] = useState(data.label as string || '')
   const [activeMenu, setActiveMenu] = useState<'none' | 'color' | 'image' | 'link' | 'icon'>('none')
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null)
   const [tempUrl, setTempUrl] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const { setNodes, setEdges } = useReactFlow()
+
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setContextMenu(null)
+      setActiveMenu('none')
+    }
+    window.addEventListener('click', handleClickOutside)
+    return () => window.removeEventListener('click', handleClickOutside)
+  }, [])
   
   const colorIndex = [...id].reduce((acc, char) => acc + char.charCodeAt(0), 0) % pastelColors.length
   
@@ -55,6 +66,14 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   const onDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!isReadOnly) setIsEditing(true)
+  }
+
+  const onContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isReadOnly) {
+      setContextMenu({ x: e.clientX, y: e.clientY })
+    }
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -99,9 +118,13 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
   return (
     <>
-      {/* Toolbar Menu (Only if not read only) */}
-      {!isReadOnly && (
-        <NodeToolbar isVisible={selected} position={Position.Top} className="flex flex-col gap-2 items-center mb-2 z-50">
+      {/* Context Menu (Only if not read only) */}
+      {!isReadOnly && contextMenu && createPortal(
+        <div 
+          className="fixed z-[100] flex flex-col gap-2 items-start"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
           
           {/* Formatting Popovers */}
           {activeMenu === 'color' && (
@@ -202,7 +225,8 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
               <button onClick={(e) => { e.stopPropagation(); if(typeof data.onDelete === 'function') data.onDelete(id) }} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors" title="Excluir (Delete)"><Trash2 size={16} /></button>
             )}
           </div>
-        </NodeToolbar>
+        </div>,
+        document.body
       )}
 
       <div 
@@ -214,6 +238,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         `}
         style={customStyle}
         onDoubleClick={onDoubleClick}
+        onContextMenu={onContextMenu}
       >
         {!isRoot && (
           <Handle 
