@@ -241,11 +241,11 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
               onBlur={onBlur}
               onMouseDown={(e) => e.stopPropagation()}
               onDoubleClick={(e) => e.stopPropagation()}
-              className={`nodrag nopan outline-none bg-transparent text-left w-full min-w-[80px] ${isRoot ? 'font-bold text-xl uppercase' : 'font-medium text-[16px]'}`}
+              className={`nodrag nopan outline-none bg-transparent text-left w-full min-w-[80px] ${isRoot ? 'font-medium text-xl uppercase' : 'font-normal text-[16px]'}`}
               style={{ color: customText || 'inherit' }}
             />
           ) : (
-            <span className={`select-none text-left ${customText ? '' : 'text-gray-800 dark:text-gray-100'} ${isRoot ? 'font-bold text-xl uppercase' : 'font-medium text-[16px]'}`} style={{ color: customText || 'inherit' }}>
+            <span className={`select-none text-left ${customText ? '' : 'text-gray-800 dark:text-gray-100'} ${isRoot ? 'font-medium text-xl uppercase' : 'font-normal text-[16px]'}`} style={{ color: customText || 'inherit' }}>
               {text || 'Novo Nó'}
             </span>
           )}
