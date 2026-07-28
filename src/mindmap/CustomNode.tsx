@@ -282,7 +282,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
         {/* Add Child Button */}
         {selected && !isReadOnly && (
-          <div className="absolute -right-8 top-1/2 -translate-y-1/2 flex items-center z-20">
+          <div className="absolute -right-10 top-1/2 -translate-y-1/2 flex items-center z-20">
             <button 
               onClick={(e) => { e.stopPropagation(); handleAddChild() }}
               className="w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm"
@@ -304,7 +304,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         {selected && !isRoot && !isReadOnly && (
           <button 
             onClick={(e) => { e.stopPropagation(); handleAddSibling() }}
-            className="absolute -bottom-[10px] left-1/2 -translate-x-1/2 w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm z-10"
+            className="absolute -bottom-[26px] left-1/2 -translate-x-1/2 w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm z-10"
           >
             <Plus size={14} />
           </button>
