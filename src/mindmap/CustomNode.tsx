@@ -370,7 +370,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                 </button>
               </div>
             </>
-          ) : (
+          ) : !data.hasChildren ? (
             <div className={`absolute top-1/2 -translate-y-1/2 flex items-center z-20 ${data.direction === 'left' ? '-left-10 flex-row-reverse' : '-right-10'}`}>
               <button
                 onClick={(e) => { e.stopPropagation(); handleAddChild() }}
@@ -387,7 +387,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                 </div>
               </div>
             </div>
-          )
+          ) : null
         )}
 
         {/* Add Sibling Button */}
