@@ -281,16 +281,19 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           )}
         </div>
 
-        {/* Toggle Collapse Button */}
+        {/* Toggle Collapse Button & Connector */}
         {!!data.hasChildren && (
-          <button 
-            onClick={(e) => { e.stopPropagation(); if(typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
-            className="absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
-            style={{ right: '-16px', borderColor: branchColor }}
-            title={data.collapsed ? "Expandir" : "Recolher"}
-          >
-            {!!data.collapsed && <div className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: branchColor }} />}
-          </button>
+          <>
+            <div className="absolute top-1/2 -translate-y-1/2 z-0" style={{ right: '-8px', width: '8px', height: '3px', backgroundColor: branchColor }} />
+            <button 
+              onClick={(e) => { e.stopPropagation(); if(typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
+              className="absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
+              style={{ right: '-16px', borderColor: branchColor }}
+              title={data.collapsed ? "Expandir" : "Recolher"}
+            >
+              {!!data.collapsed && <div className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: branchColor }} />}
+            </button>
+          </>
         )}
 
         <Handle 
