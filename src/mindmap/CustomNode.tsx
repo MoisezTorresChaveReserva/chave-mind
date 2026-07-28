@@ -61,8 +61,13 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
+      const timeoutId = setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus()
+          inputRef.current.select()
+        }
+      }, 50) // Small delay to let React Flow finish rendering and event propagation
+      return () => clearTimeout(timeoutId)
     }
   }, [isEditing])
 
