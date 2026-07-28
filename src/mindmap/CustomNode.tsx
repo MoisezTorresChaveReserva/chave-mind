@@ -272,6 +272,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             <input
               ref={inputRef}
               value={text}
+              autoFocus
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
               onBlur={onBlur}
