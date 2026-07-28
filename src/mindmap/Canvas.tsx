@@ -18,15 +18,10 @@ import {
 } from '@xyflow/react'
 import { toPng, toSvg } from 'html-to-image'
 import CustomNode from './CustomNode'
-import MindMapEdge from './MindMapEdge'
 import { supabase } from '@/supabase/client'
 
 const nodeTypes = {
   custom: CustomNode,
-}
-
-const edgeTypes = {
-  mindmap: MindMapEdge,
 }
 
 const BRANCH_COLORS = [
@@ -95,7 +90,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     id: e.id,
     source: e.source,
     target: e.target,
-    type: 'mindmap',
+    type: 'bezier',
     animated: e.animated,
     style: { stroke: e.color || '#ec4899', strokeWidth: 3 }
   }))
@@ -109,7 +104,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
           id: generateId(),
           source: node.data.parent_id as string,
           target: node.id,
-          type: 'mindmap',
+          type: 'bezier',
           style: { stroke: '#ec4899', strokeWidth: 3 }
         })
       }
@@ -209,7 +204,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     })
 
     const NODE_HEIGHT = 40
-    const VERTICAL_SPACING = 30
+    const VERTICAL_SPACING = 20
 
     const getNodeWidth = (nodeId: string) => {
       const node = nodesList.find(n => n.id === nodeId)
@@ -254,8 +249,8 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       for (const cid of children) {
         const childHeight = getSubtreeHeight(cid)
         const childCenterY = currentY + childHeight / 2
-        // Dynamic X placement: Right edge of parent + gap of 220px for smooth curves
-        assignPositions(cid, cx + nodeWidth + 220, childCenterY)
+        // Dynamic X placement: Right edge of parent + fixed gap of 100px
+        assignPositions(cid, cx + nodeWidth + 100, childCenterY)
         currentY += childHeight + VERTICAL_SPACING
       }
     }
@@ -385,7 +380,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       id: generateId(),
       source: parentId,
       target: newNodeId,
-      type: 'mindmap',
+      type: 'bezier',
       style: { stroke: '#ec4899', strokeWidth: 3 }
     }
     
@@ -435,7 +430,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         id: generateId(),
         source: node.data.parent_id as string,
         target: newNodeId,
-        type: 'mindmap',
+        type: 'bezier',
         style: { stroke: '#ec4899', strokeWidth: 3 }
       }
       setEdges(eds => [...eds, newEdge])
@@ -479,7 +474,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     ideas.forEach(label => {
       const id = generateId()
       newNodes.push({ id, type: 'custom', position: {x:0, y:0}, data: { label, parent_id: parentId } })
-      newEdges.push({ id: generateId(), source: parentId, target: id, type: 'mindmap' })
+      newEdges.push({ id: generateId(), source: parentId, target: id, type: 'bezier' })
     })
     
     setNodes(nds => applyAutoLayout([...nds.map(n => ({...n, selected: false})), ...newNodes]))
@@ -580,7 +575,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
           id: generateId(),
           source: targetNode.id,
           target: node.id,
-          type: 'mindmap',
+          type: 'bezier',
           style: { stroke: '#ec4899', strokeWidth: 3 }
         }]
       })
@@ -784,7 +779,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         id: 'ghost-preview-edge',
         source: dropTarget.id,
         target: ghostNodeId,
-        type: 'mindmap',
+        type: 'bezier',
         hidden: false,
         animated: false,
         style: { stroke: '#e5e7eb', strokeWidth: 3 }
@@ -861,9 +856,8 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         edges={displayEdges}
         onNodesChange={onNodesChangeWrapper}
         onEdgesChange={onEdgesChange}
-        onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'mindmap' }, eds)) }}
+        onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
         nodeTypes={memoizedNodeTypes}
-        edgeTypes={edgeTypes}
         onNodeDrag={isReadOnly ? undefined : onNodeDrag}
         onNodeDragStop={isReadOnly ? undefined : onNodeDragStop}
         nodesDraggable={!isReadOnly}
