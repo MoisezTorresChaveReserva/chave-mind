@@ -6,9 +6,10 @@ import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play,
 import { useRouter } from 'next/navigation'
 import Canvas from '@/mindmap/Canvas'
 import Sidebar from '@/components/Sidebar'
+import ShareModal from '@/components/ShareModal'
 import { supabase } from '@/supabase/client'
 
-export default function Editor({ map, initialNodes, initialEdges, user }: { map: MindMap, initialNodes: MapNode[], initialEdges: MapEdge[], user: any }) {
+export default function Editor({ map, initialNodes, initialEdges, user, isReadOnly = false }: { map: MindMap, initialNodes: MapNode[], initialEdges: MapEdge[], user: any, isReadOnly?: boolean }) {
   const router = useRouter()
   const [isSidebarOpen, setSidebarOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
@@ -20,11 +21,13 @@ export default function Editor({ map, initialNodes, initialEdges, user }: { map:
   const [presentationMode, setPresentationMode] = useState<'edit' | 'presentation_setup' | 'playing'>('edit')
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
   const [isCapturingMode, setIsCapturingMode] = useState(false)
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   
   // Title State
   const [mapTitle, setMapTitle] = useState(map.title)
 
   const handleTitleBlur = async () => {
+    if (isReadOnly) return
     if (mapTitle !== map.title && mapTitle.trim() !== '') {
       setSaveStatus('saving')
       const { error } = await supabase.from('mind_maps').update({ title: mapTitle }).eq('id', map.id)
@@ -108,14 +111,19 @@ export default function Editor({ map, initialNodes, initialEdges, user }: { map:
               <ChevronLeft size={18} />
             </button>
             <div className="flex flex-col">
-              <input 
-                value={mapTitle}
-                onChange={(e) => setMapTitle(e.target.value)}
-                onBlur={handleTitleBlur}
-                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                className="font-semibold text-sm bg-transparent outline-none border-b border-transparent hover:border-gray-300 focus:border-purple-500 transition-colors w-48 truncate"
-                title="Renomear Mapa"
-              />
+              {isReadOnly ? (
+                <h1 className="text-lg font-semibold text-[var(--foreground)] truncate max-w-[200px]">
+                  {mapTitle}
+                </h1>
+              ) : (
+                <input 
+                  type="text" 
+                  value={mapTitle}
+                  onChange={(e) => setMapTitle(e.target.value)}
+                  onBlur={handleTitleBlur}
+                  className="text-lg font-semibold bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 -ml-2 text-[var(--foreground)] w-[200px]"
+                />
+              )}
               <span className="text-[10px] text-gray-500 flex items-center gap-1">
                 <Cloud size={10} className={saveStatus === 'saving' ? 'text-blue-500' : saveStatus === 'error' ? 'text-red-500' : 'text-green-500'} /> 
                 {saveStatus === 'saving' ? 'Salvando...' : saveStatus === 'error' ? 'Erro ao salvar' : 'Salvo na nuvem'}
@@ -151,14 +159,7 @@ export default function Editor({ map, initialNodes, initialEdges, user }: { map:
             </button>
             <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
             <button 
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(window.location.href)
-                  alert('Link copiado para a área de transferência!')
-                } catch (e) {
-                  prompt('Não foi possível copiar automaticamente. Copie este link manualmente:', window.location.href)
-                }
-              }}
+              onClick={() => setIsShareModalOpen(true)}
               className="text-sm px-3 py-1.5 font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               Compartilhar
@@ -224,6 +225,7 @@ export default function Editor({ map, initialNodes, initialEdges, user }: { map:
             currentSlideIndex={currentSlideIndex}
             isCapturingMode={isCapturingMode}
             setIsCapturingMode={setIsCapturingMode}
+            isReadOnly={isReadOnly}
           />
         </main>
 
@@ -336,6 +338,13 @@ export default function Editor({ map, initialNodes, initialEdges, user }: { map:
           </div>
         )}
       </div>
+
+      <ShareModal 
+        mapId={map.id} 
+        isOpen={isShareModalOpen} 
+        onClose={() => setIsShareModalOpen(false)} 
+        isOwner={map.user_id === user.id}
+      />
     </div>
   )
 }

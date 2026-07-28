@@ -25,5 +25,23 @@ export default async function MapPage(props: { params: Promise<{ id: string }> }
   const { data: nodes } = await supabase.from('nodes').select('*').eq('map_id', params.id)
   const { data: edges } = await supabase.from('edges').select('*').eq('map_id', params.id)
 
-  return <Editor map={map} initialNodes={nodes || []} initialEdges={edges || []} user={user} />
+  let role = 'reader'
+  if (map.user_id === user.id) {
+    role = 'editor'
+  } else if (user.email) {
+    const { data: collab } = await supabase
+      .from('map_collaborators')
+      .select('role')
+      .eq('map_id', params.id)
+      .eq('email', user.email)
+      .single()
+      
+    if (collab) {
+      role = collab.role
+    }
+  }
+
+  const isReadOnly = role === 'reader'
+
+  return <Editor map={map} initialNodes={nodes || []} initialEdges={edges || []} user={user} isReadOnly={isReadOnly} />
 }

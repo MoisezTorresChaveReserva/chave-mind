@@ -39,6 +39,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
   const branchColor = (data.branchColor as string) || '#ec4899'
   const isRoot = data.isRoot as boolean
+  const isReadOnly = data.isReadOnly as boolean
 
   useEffect(() => {
     setText(data.label as string || '')
@@ -53,7 +54,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
   const onDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setIsEditing(true)
+    if (!isReadOnly) setIsEditing(true)
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -98,108 +99,111 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
   return (
     <>
-      <NodeToolbar isVisible={selected} position={Position.Top} className="flex flex-col gap-2 items-center mb-2 z-50">
-        
-        {/* Formatting Popovers */}
-        {activeMenu === 'color' && (
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
-            <div className="text-xs font-semibold text-gray-500 mb-1 flex justify-between">
-              <span>Cores</span>
-              <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
+      {/* Toolbar Menu (Only if not read only) */}
+      {!isReadOnly && (
+        <NodeToolbar isVisible={selected} position={Position.Top} className="flex flex-col gap-2 items-center mb-2 z-50">
+          
+          {/* Formatting Popovers */}
+          {activeMenu === 'color' && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
+              <div className="text-xs font-semibold text-gray-500 mb-1 flex justify-between">
+                <span>Cores</span>
+                <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
+              </div>
+              <div className="text-[10px] uppercase font-bold text-gray-400">Fundo</div>
+              <div className="flex flex-wrap gap-1">
+                {THEME_COLORS.map(c => (
+                  <button key={'bg-'+c} onClick={() => updateFormatting({bg_color: c === 'transparent' ? null : c})} className="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style={{backgroundColor: c === 'transparent' ? '#f3f4f6' : c}} />
+                ))}
+              </div>
+              <div className="text-[10px] uppercase font-bold text-gray-400 mt-1">Texto</div>
+              <div className="flex flex-wrap gap-1">
+                {THEME_COLORS.map(c => (
+                  <button key={'tx-'+c} onClick={() => updateFormatting({text_color: c === 'transparent' ? null : c})} className="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style={{backgroundColor: c === 'transparent' ? '#f3f4f6' : c}} />
+                ))}
+              </div>
             </div>
-            <div className="text-[10px] uppercase font-bold text-gray-400">Fundo</div>
-            <div className="flex flex-wrap gap-1">
-              {THEME_COLORS.map(c => (
-                <button key={'bg-'+c} onClick={() => updateFormatting({bg_color: c === 'transparent' ? null : c})} className="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style={{backgroundColor: c === 'transparent' ? '#f3f4f6' : c}} />
-              ))}
-            </div>
-            <div className="text-[10px] uppercase font-bold text-gray-400 mt-1">Texto</div>
-            <div className="flex flex-wrap gap-1">
-              {THEME_COLORS.map(c => (
-                <button key={'tx-'+c} onClick={() => updateFormatting({text_color: c === 'transparent' ? null : c})} className="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style={{backgroundColor: c === 'transparent' ? '#f3f4f6' : c}} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeMenu === 'image' && (
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
-             <div className="text-xs font-semibold text-gray-500 flex justify-between">
-              <span>URL da Imagem</span>
-              <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
-            </div>
-            <input 
-              type="text" 
-              placeholder="https://..." 
-              value={tempUrl} 
-              onChange={e => setTempUrl(e.target.value)}
-              className="w-full text-xs p-1 border rounded"
-              onKeyDown={(e) => {
-                if(e.key === 'Enter') {
-                  updateFormatting({image_url: tempUrl})
-                  setActiveMenu('none')
-                  setTempUrl('')
-                }
-              }}
-            />
-            <button onClick={() => { updateFormatting({image_url: tempUrl}); setActiveMenu('none'); setTempUrl('') }} className="text-xs bg-blue-500 text-white rounded py-1">Aplicar</button>
-            <button onClick={() => { updateFormatting({image_url: null}); setActiveMenu('none') }} className="text-xs text-red-500 py-1">Remover</button>
-          </div>
-        )}
-
-        {activeMenu === 'link' && (
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
-             <div className="text-xs font-semibold text-gray-500 flex justify-between">
-              <span>Link URL</span>
-              <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
-            </div>
-            <input 
-              type="text" 
-              placeholder="https://..." 
-              value={tempUrl} 
-              onChange={e => setTempUrl(e.target.value)}
-              className="w-full text-xs p-1 border rounded"
-              onKeyDown={(e) => {
-                if(e.key === 'Enter') {
-                  updateFormatting({link_url: tempUrl})
-                  setActiveMenu('none')
-                  setTempUrl('')
-                }
-              }}
-            />
-            <button onClick={() => { updateFormatting({link_url: tempUrl}); setActiveMenu('none'); setTempUrl('') }} className="text-xs bg-blue-500 text-white rounded py-1">Aplicar</button>
-            <button onClick={() => { updateFormatting({link_url: null}); setActiveMenu('none') }} className="text-xs text-red-500 py-1">Remover</button>
-          </div>
-        )}
-
-        {activeMenu === 'icon' && (
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
-             <div className="text-xs font-semibold text-gray-500 flex justify-between">
-              <span>Ícone (Emoji)</span>
-              <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
-            </div>
-            <div className="flex flex-wrap gap-2 text-lg">
-              {['🚀', '💡', '🔥', '✅', '⭐', '❤️', '🎯', '💰', '📊', '🌐', '📌', '⚠️'].map(emoji => (
-                <button key={emoji} onClick={() => { updateFormatting({icon: emoji}); setActiveMenu('none') }} className="hover:scale-125 transition-transform">{emoji}</button>
-              ))}
-            </div>
-            <button onClick={() => { updateFormatting({icon: null}); setActiveMenu('none') }} className="text-xs text-red-500 py-1 mt-1">Remover</button>
-          </div>
-        )}
-
-        <div className="flex gap-1 bg-[var(--node-bg)] border border-[var(--border)] rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.05)] p-1.5">
-          <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'color' ? 'none' : 'color') }} className="p-1.5 text-pink-500 hover:bg-pink-50 dark:hover:bg-pink-900/30 rounded-md transition-colors" title="Cores"><Palette size={16} /></button>
-          <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'image' ? 'none' : 'image'); setTempUrl(data.image_url as string || '') }} className="p-1.5 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-md transition-colors" title="Imagem"><ImageIcon size={16} /></button>
-          <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'link' ? 'none' : 'link'); setTempUrl(data.link_url as string || '') }} className="p-1.5 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-md transition-colors" title="Link"><Link size={16} /></button>
-          <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'icon' ? 'none' : 'icon') }} className="p-1.5 text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-md transition-colors" title="Ícone"><Smile size={16} /></button>
-          <div className="w-[1px] bg-gray-200 dark:bg-gray-700 mx-1"></div>
-          <button onClick={(e) => { e.stopPropagation(); if(typeof data.onAI === 'function') data.onAI(id) }} className="p-1.5 text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-md transition-colors" title="Gerar Ideias (AI)"><Wand2 size={16} /></button>
-          <button onClick={(e) => { e.stopPropagation(); setIsEditing(true) }} className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors" title="Editar Texto"><Type size={16} /></button>
-          {!isRoot && (
-            <button onClick={(e) => { e.stopPropagation(); if(typeof data.onDelete === 'function') data.onDelete(id) }} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors" title="Excluir (Delete)"><Trash2 size={16} /></button>
           )}
-        </div>
-      </NodeToolbar>
+
+          {activeMenu === 'image' && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
+               <div className="text-xs font-semibold text-gray-500 flex justify-between">
+                <span>URL da Imagem</span>
+                <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
+              </div>
+              <input 
+                type="text" 
+                placeholder="https://..." 
+                value={tempUrl} 
+                onChange={e => setTempUrl(e.target.value)}
+                className="w-full text-xs p-1 border rounded"
+                onKeyDown={(e) => {
+                  if(e.key === 'Enter') {
+                    updateFormatting({image_url: tempUrl})
+                    setActiveMenu('none')
+                    setTempUrl('')
+                  }
+                }}
+              />
+              <button onClick={() => { updateFormatting({image_url: tempUrl}); setActiveMenu('none'); setTempUrl('') }} className="text-xs bg-blue-500 text-white rounded py-1">Aplicar</button>
+              <button onClick={() => { updateFormatting({image_url: null}); setActiveMenu('none') }} className="text-xs text-red-500 py-1">Remover</button>
+            </div>
+          )}
+
+          {activeMenu === 'link' && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
+               <div className="text-xs font-semibold text-gray-500 flex justify-between">
+                <span>Link URL</span>
+                <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
+              </div>
+              <input 
+                type="text" 
+                placeholder="https://..." 
+                value={tempUrl} 
+                onChange={e => setTempUrl(e.target.value)}
+                className="w-full text-xs p-1 border rounded"
+                onKeyDown={(e) => {
+                  if(e.key === 'Enter') {
+                    updateFormatting({link_url: tempUrl})
+                    setActiveMenu('none')
+                    setTempUrl('')
+                  }
+                }}
+              />
+              <button onClick={() => { updateFormatting({link_url: tempUrl}); setActiveMenu('none'); setTempUrl('') }} className="text-xs bg-blue-500 text-white rounded py-1">Aplicar</button>
+              <button onClick={() => { updateFormatting({link_url: null}); setActiveMenu('none') }} className="text-xs text-red-500 py-1">Remover</button>
+            </div>
+          )}
+
+          {activeMenu === 'icon' && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
+               <div className="text-xs font-semibold text-gray-500 flex justify-between">
+                <span>Ícone (Emoji)</span>
+                <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
+              </div>
+              <div className="flex flex-wrap gap-2 text-lg">
+                {['🚀', '💡', '🔥', '✅', '⭐', '❤️', '🎯', '💰', '📊', '🌐', '📌', '⚠️'].map(emoji => (
+                  <button key={emoji} onClick={() => { updateFormatting({icon: emoji}); setActiveMenu('none') }} className="hover:scale-125 transition-transform">{emoji}</button>
+                ))}
+              </div>
+              <button onClick={() => { updateFormatting({icon: null}); setActiveMenu('none') }} className="text-xs text-red-500 py-1 mt-1">Remover</button>
+            </div>
+          )}
+
+          <div className="flex gap-1 bg-[var(--node-bg)] border border-[var(--border)] rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.05)] p-1.5">
+            <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'color' ? 'none' : 'color') }} className="p-1.5 text-pink-500 hover:bg-pink-50 dark:hover:bg-pink-900/30 rounded-md transition-colors" title="Cores"><Palette size={16} /></button>
+            <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'image' ? 'none' : 'image'); setTempUrl(data.image_url as string || '') }} className="p-1.5 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-md transition-colors" title="Imagem"><ImageIcon size={16} /></button>
+            <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'link' ? 'none' : 'link'); setTempUrl(data.link_url as string || '') }} className="p-1.5 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-md transition-colors" title="Link"><Link size={16} /></button>
+            <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'icon' ? 'none' : 'icon') }} className="p-1.5 text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-md transition-colors" title="Ícone"><Smile size={16} /></button>
+            <div className="w-[1px] bg-gray-200 dark:bg-gray-700 mx-1"></div>
+            <button onClick={(e) => { e.stopPropagation(); if(typeof data.onAI === 'function') data.onAI(id) }} className="p-1.5 text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-md transition-colors" title="Gerar Ideias (AI)"><Wand2 size={16} /></button>
+            <button onClick={(e) => { e.stopPropagation(); setIsEditing(true) }} className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors" title="Editar Texto"><Type size={16} /></button>
+            {!isRoot && (
+              <button onClick={(e) => { e.stopPropagation(); if(typeof data.onDelete === 'function') data.onDelete(id) }} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors" title="Excluir (Delete)"><Trash2 size={16} /></button>
+            )}
+          </div>
+        </NodeToolbar>
+      )}
 
       <div 
         className={`
@@ -277,7 +281,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         />
 
         {/* Add Child Button */}
-        {selected && (
+        {selected && !isReadOnly && (
           <div className="absolute -right-8 top-1/2 -translate-y-1/2 flex items-center z-20">
             <button 
               onClick={(e) => { e.stopPropagation(); handleAddChild() }}
@@ -297,7 +301,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         )}
 
         {/* Add Sibling Button */}
-        {selected && (
+        {selected && !isRoot && !isReadOnly && (
           <button 
             onClick={(e) => { e.stopPropagation(); handleAddSibling() }}
             className="absolute -bottom-[10px] left-1/2 -translate-x-1/2 w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm z-10"

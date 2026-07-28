@@ -41,7 +41,7 @@ const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
 }
 
-function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode }: any) {
+function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, isReadOnly }: any) {
   const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, getIntersectingNodes } = useReactFlow()
   const { x: vpX, y: vpY, zoom: vpZoom } = useViewport()
   
@@ -536,13 +536,14 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
   // Wrap nodeTypes to inject callbacks
   const memoizedNodeTypes = useMemo(() => {
     return {
-      custom: (props: any) => <CustomNode {...props} data={{...props.data, onChange: onNodeLabelChange, onToggleCollapse, onAddChild, onAddSibling, onDelete: onDeleteNode, onAI, onChangeFormatting, isColorful, theme}} />
+      custom: (props: any) => <CustomNode {...props} data={{...props.data, onChange: onNodeLabelChange, onToggleCollapse, onAddChild, onAddSibling, onDelete: onDeleteNode, onAI, onChangeFormatting, isColorful, theme, isReadOnly}} />
     }
-  }, [onNodeLabelChange, onToggleCollapse, onAddChild, onAddSibling, onDeleteNode, onAI, onChangeFormatting, isColorful, theme])
+  }, [onNodeLabelChange, onToggleCollapse, onAddChild, onAddSibling, onDeleteNode, onAI, onChangeFormatting, isColorful, theme, isReadOnly])
 
   // Keyboard bindings
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isReadOnly) return
       // Don't trigger if typing in an input
       if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return
       
@@ -782,12 +783,14 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         edges={displayEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onNodeDrag={onNodeDrag}
-        onNodeDragStop={onNodeDragStop}
         onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
         nodeTypes={memoizedNodeTypes}
+        onNodeDrag={isReadOnly ? undefined : onNodeDrag}
+        onNodeDragStop={isReadOnly ? undefined : onNodeDragStop}
+        nodesDraggable={!isReadOnly}
+        nodesConnectable={!isReadOnly}
+        elementsSelectable={true}
         connectionMode={ConnectionMode.Loose}
-        nodesDraggable={!isCapturingMode}
         panOnDrag={!isCapturingMode}
         zoomOnDoubleClick={false}
         snapToGrid={false}
