@@ -1,0 +1,5 @@
+ALTER TABLE nodes ADD COLUMN bg_color TEXT;
+ALTER TABLE nodes ADD COLUMN text_color TEXT;
+ALTER TABLE nodes ADD COLUMN image_url TEXT;
+ALTER TABLE nodes ADD COLUMN icon TEXT;
+ALTER TABLE nodes ADD COLUMN link_url TEXT;
