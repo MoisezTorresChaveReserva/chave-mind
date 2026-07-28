@@ -18,10 +18,15 @@ import {
 } from '@xyflow/react'
 import { toPng, toSvg } from 'html-to-image'
 import CustomNode from './CustomNode'
+import MindMapEdge from './MindMapEdge'
 import { supabase } from '@/supabase/client'
 
 const nodeTypes = {
   custom: CustomNode,
+}
+
+const edgeTypes = {
+  mindmap: MindMapEdge,
 }
 
 const BRANCH_COLORS = [
@@ -90,7 +95,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     id: e.id,
     source: e.source,
     target: e.target,
-    type: 'bezier',
+    type: 'mindmap',
     animated: e.animated,
     style: { stroke: e.color || '#ec4899', strokeWidth: 3 }
   }))
@@ -104,7 +109,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
           id: generateId(),
           source: node.data.parent_id as string,
           target: node.id,
-          type: 'bezier',
+          type: 'mindmap',
           style: { stroke: '#ec4899', strokeWidth: 3 }
         })
       }
@@ -249,8 +254,8 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       for (const cid of children) {
         const childHeight = getSubtreeHeight(cid)
         const childCenterY = currentY + childHeight / 2
-        // Dynamic X placement: Right edge of parent + fixed gap of 100px
-        assignPositions(cid, cx + nodeWidth + 100, childCenterY)
+        // Dynamic X placement: Right edge of parent + fixed gap of 70px
+        assignPositions(cid, cx + nodeWidth + 70, childCenterY)
         currentY += childHeight + VERTICAL_SPACING
       }
     }
@@ -380,7 +385,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       id: generateId(),
       source: parentId,
       target: newNodeId,
-      type: 'bezier',
+      type: 'mindmap',
       style: { stroke: '#ec4899', strokeWidth: 3 }
     }
     
@@ -430,7 +435,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         id: generateId(),
         source: node.data.parent_id as string,
         target: newNodeId,
-        type: 'bezier',
+        type: 'mindmap',
         style: { stroke: '#ec4899', strokeWidth: 3 }
       }
       setEdges(eds => [...eds, newEdge])
@@ -474,7 +479,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     ideas.forEach(label => {
       const id = generateId()
       newNodes.push({ id, type: 'custom', position: {x:0, y:0}, data: { label, parent_id: parentId } })
-      newEdges.push({ id: generateId(), source: parentId, target: id, type: 'bezier' })
+      newEdges.push({ id: generateId(), source: parentId, target: id, type: 'mindmap' })
     })
     
     setNodes(nds => applyAutoLayout([...nds.map(n => ({...n, selected: false})), ...newNodes]))
@@ -575,7 +580,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
           id: generateId(),
           source: targetNode.id,
           target: node.id,
-          type: 'bezier',
+          type: 'mindmap',
           style: { stroke: '#ec4899', strokeWidth: 3 }
         }]
       })
@@ -779,7 +784,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         id: 'ghost-preview-edge',
         source: dropTarget.id,
         target: ghostNodeId,
-        type: 'bezier',
+        type: 'mindmap',
         hidden: false,
         animated: false,
         style: { stroke: '#e5e7eb', strokeWidth: 3 }
@@ -856,8 +861,9 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         edges={displayEdges}
         onNodesChange={onNodesChangeWrapper}
         onEdgesChange={onEdgesChange}
-        onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
+        onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'mindmap' }, eds)) }}
         nodeTypes={memoizedNodeTypes}
+        edgeTypes={edgeTypes}
         onNodeDrag={isReadOnly ? undefined : onNodeDrag}
         onNodeDragStop={isReadOnly ? undefined : onNodeDragStop}
         nodesDraggable={!isReadOnly}
