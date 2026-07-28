@@ -213,7 +213,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             </div>
           )}
 
-          <div className="flex gap-1 bg-[var(--node-bg)] border border-[var(--border)] rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.05)] p-1.5">
+          <div className="flex gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-1.5">
             <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'color' ? 'none' : 'color') }} className="p-1.5 text-pink-500 hover:bg-pink-50 dark:hover:bg-pink-900/30 rounded-md transition-colors" title="Cores"><Palette size={16} /></button>
             <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'image' ? 'none' : 'image'); setTempUrl(data.image_url as string || '') }} className="p-1.5 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-md transition-colors" title="Imagem"><ImageIcon size={16} /></button>
             <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'link' ? 'none' : 'link'); setTempUrl(data.link_url as string || '') }} className="p-1.5 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-md transition-colors" title="Link"><Link size={16} /></button>
