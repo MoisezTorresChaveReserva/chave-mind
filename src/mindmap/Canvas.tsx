@@ -468,26 +468,56 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       return cx >= nx && cx <= nx + nw && cy >= ny && cy <= ny + nh
     })
     
-    setNodes(nds => nds.map(n => {
-      const isTarget = validTarget && n.id === validTarget.id
-      
-      // Cycle detection: is `n` a descendant of `node`?
-      let isDescendant = false
-      let current = n
-      while (current && current.data.parent_id) {
-        if (current.data.parent_id === node.id) { isDescendant = true; break }
-        current = nds.find(x => x.id === current.data.parent_id) as Node
+    setNodes(nds => {
+      let newNodes = nds.map(n => {
+        const isTarget = validTarget && n.id === validTarget.id
+        
+        // Cycle detection: is `n` a descendant of `node`?
+        let isDescendant = false
+        let current = n
+        while (current && current.data.parent_id) {
+          if (current.data.parent_id === node.id) { isDescendant = true; break }
+          current = nds.find(x => x.id === current.data.parent_id) as Node
+        }
+
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            isDropTarget: isTarget && !isDescendant && n.id !== node.id
+          }
+        }
+      })
+
+      // Dynamic Reordering Preview
+      if (!validTarget) {
+        const parentId = node.data.parent_id
+        const siblings = newNodes.filter(n => n.data.parent_id === parentId)
+        
+        // Temporarily override the dragged node's Y for sorting purposes
+        const draggedIndex = siblings.findIndex(s => s.id === node.id)
+        if (draggedIndex !== -1) {
+          siblings[draggedIndex] = { ...siblings[draggedIndex], position: node.position }
+        }
+
+        siblings.sort((a, b) => a.position.y - b.position.y)
+        
+        const withoutSiblings = newNodes.filter(n => n.data.parent_id !== parentId)
+        const orderedList = [...withoutSiblings, ...siblings]
+        
+        const layouted = applyAutoLayout(orderedList)
+        
+        return layouted.map(n => {
+          if (n.id === node.id) {
+            return { ...n, position: node.position } // Keep cursor position for the dragged node
+          }
+          return n
+        })
       }
 
-      return {
-        ...n,
-        data: {
-          ...n.data,
-          isDropTarget: isTarget && !isDescendant && n.id !== node.id
-        }
-      }
-    }))
-  }, [getIntersectingNodes, setNodes])
+      return newNodes
+    })
+  }, [getIntersectingNodes, setNodes, applyAutoLayout])
 
   const onNodeDragStop = useCallback((event: any, node: Node) => {
     if (!node.data.parent_id) {
