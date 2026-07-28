@@ -174,10 +174,22 @@ export default function Editor({ map, initialNodes, initialEdges, user }: { map:
               <button className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"><MoreHorizontal size={16} /></button>
               <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity flex flex-col py-1 z-50">
                 <button 
-                  onClick={() => alert('Exportação será adicionada em breve!')}
+                  onClick={() => window.dispatchEvent(new CustomEvent('export-map', { detail: { format: 'png' } }))}
                   className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
-                  Exportar Imagem
+                  Exportar como PNG
+                </button>
+                <button 
+                  onClick={() => window.dispatchEvent(new CustomEvent('export-map', { detail: { format: 'svg' } }))}
+                  className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Exportar como SVG
+                </button>
+                <button 
+                  onClick={() => window.dispatchEvent(new CustomEvent('export-map', { detail: { format: 'json' } }))}
+                  className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Exportar como JSON
                 </button>
                 <div className="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
                 <button 

@@ -16,6 +16,7 @@ import {
   MarkerType,
   BackgroundVariant
 } from '@xyflow/react'
+import { toPng, toSvg } from 'html-to-image'
 import CustomNode from './CustomNode'
 import { supabase } from '@/supabase/client'
 
@@ -135,6 +136,45 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       return newFuture
     })
   }, [getNodes, getEdges, setNodes, setEdges])
+
+  useEffect(() => {
+    const downloadDataUrl = (dataUrl: string, filename: string) => {
+      const a = document.createElement('a')
+      a.setAttribute('download', filename)
+      a.setAttribute('href', dataUrl)
+      a.click()
+    }
+
+    const handleExport = async (e: any) => {
+      const format = e.detail.format
+      
+      if (format === 'json') {
+        const data = { nodes: getNodes(), edges: getEdges() }
+        const jsonStr = JSON.stringify(data, null, 2)
+        const dataUrl = `data:text/json;charset=utf-8,${encodeURIComponent(jsonStr)}`
+        downloadDataUrl(dataUrl, `mindmap-${mapId}.json`)
+        return
+      }
+
+      const flowViewport = document.querySelector('.react-flow__viewport') as HTMLElement
+      if (!flowViewport) return
+      
+      try {
+        if (format === 'png') {
+          const dataUrl = await toPng(flowViewport, { backgroundColor: theme === 'dark' ? '#111827' : '#ffffff' })
+          downloadDataUrl(dataUrl, `mindmap-${mapId}.png`)
+        } else if (format === 'svg') {
+          const dataUrl = await toSvg(flowViewport, { backgroundColor: theme === 'dark' ? '#111827' : '#ffffff' })
+          downloadDataUrl(dataUrl, `mindmap-${mapId}.svg`)
+        }
+      } catch (err) {
+        console.error('Failed to export map', err)
+      }
+    }
+
+    window.addEventListener('export-map', handleExport)
+    return () => window.removeEventListener('export-map', handleExport)
+  }, [getNodes, getEdges, mapId, theme])
 
   // Symmetric Tree Auto-Layout
   const applyAutoLayout = useCallback((nodesList: Node[]) => {
