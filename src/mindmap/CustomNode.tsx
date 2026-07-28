@@ -207,11 +207,10 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
       <div 
         className={`
-          relative px-3 py-1.5 rounded-xl flex flex-col items-center justify-center w-max transition-all group border
+          relative px-2 py-1 rounded-xl flex flex-col items-center justify-center w-max transition-all group
           ${customBg ? '' : themeClass}
           ${selected ? 'ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-gray-900 shadow-md' : ''}
           ${data.isDropTarget ? 'ring-4 ring-green-500 border-dashed scale-110 shadow-2xl z-50 ring-offset-2 dark:ring-offset-gray-900 bg-green-50/50 dark:bg-green-900/30' : ''}
-          ${!data.isColorful && !selected && !customBg && !data.isDropTarget ? 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50' : ''}
         `}
         style={customStyle}
         onDoubleClick={onDoubleClick}
@@ -220,7 +219,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           <Handle 
             type="target" 
             position={Position.Left} 
-            className="!w-3 !h-3 !bg-[var(--node-bg)] !border-2 !-ml-[7px]" 
+            className="opacity-0 !-ml-[7px]" 
             style={{ borderColor: branchColor }} 
           />
         )}
@@ -257,19 +256,16 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           )}
         </div>
 
-        {/* Toggle Collapse Button & Connector */}
+        {/* Toggle Collapse Button */}
         {!!data.hasChildren && (
-          <>
-            <div className="absolute top-1/2 -translate-y-1/2 z-0" style={{ right: '-8px', width: '8px', height: '3px', backgroundColor: branchColor }} />
-            <button 
-              onClick={(e) => { e.stopPropagation(); if(typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
-              className="absolute top-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[3px]"
-              style={{ right: '-17px', borderColor: branchColor }}
-              title={data.collapsed ? "Expandir" : "Recolher"}
-            >
-              {!!data.collapsed && <div className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: branchColor }} />}
-            </button>
-          </>
+          <button 
+            onClick={(e) => { e.stopPropagation(); if(typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
+            className="absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
+            style={{ right: '-16px', borderColor: branchColor }}
+            title={data.collapsed ? "Expandir" : "Recolher"}
+          >
+            {!!data.collapsed && <div className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: branchColor }} />}
+          </button>
         )}
 
         <Handle 
