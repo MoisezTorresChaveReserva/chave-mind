@@ -20,6 +20,20 @@ export default function Editor({ map, initialNodes, initialEdges, user }: { map:
   const [presentationMode, setPresentationMode] = useState<'edit' | 'presentation_setup' | 'playing'>('edit')
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
   const [isCapturingMode, setIsCapturingMode] = useState(false)
+  
+  // Title State
+  const [mapTitle, setMapTitle] = useState(map.title)
+
+  const handleTitleBlur = async () => {
+    if (mapTitle !== map.title && mapTitle.trim() !== '') {
+      setSaveStatus('saving')
+      const { error } = await supabase.from('mind_maps').update({ title: mapTitle }).eq('id', map.id)
+      if (error) setSaveStatus('error')
+      else setSaveStatus('saved')
+    } else if (mapTitle.trim() === '') {
+      setMapTitle(map.title) // Revert if empty
+    }
+  }
 
   // Parse existing slides on mount
   useEffect(() => {
@@ -94,9 +108,16 @@ export default function Editor({ map, initialNodes, initialEdges, user }: { map:
               <ChevronLeft size={18} />
             </button>
             <div className="flex flex-col">
-              <span className="font-semibold text-sm">{map.title}</span>
+              <input 
+                value={mapTitle}
+                onChange={(e) => setMapTitle(e.target.value)}
+                onBlur={handleTitleBlur}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                className="font-semibold text-sm bg-transparent outline-none border-b border-transparent hover:border-gray-300 focus:border-purple-500 transition-colors w-48 truncate"
+                title="Renomear Mapa"
+              />
               <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                <Cloud size={10} className={saveStatus === 'saving' ? 'text-blue-500' : 'text-green-500'} /> 
+                <Cloud size={10} className={saveStatus === 'saving' ? 'text-blue-500' : saveStatus === 'error' ? 'text-red-500' : 'text-green-500'} /> 
                 {saveStatus === 'saving' ? 'Salvando...' : saveStatus === 'error' ? 'Erro ao salvar' : 'Salvo na nuvem'}
               </span>
             </div>
