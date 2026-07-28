@@ -33,14 +33,14 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
     window.addEventListener('click', handleClickOutside)
     return () => window.removeEventListener('click', handleClickOutside)
   }, [])
-  
+
   const colorIndex = [...id].reduce((acc, char) => acc + char.charCodeAt(0), 0) % pastelColors.length
-  
+
   // Base themes if no custom color is set
-  const themeClass = data.isColorful 
-    ? pastelColors[colorIndex] 
+  const themeClass = data.isColorful
+    ? pastelColors[colorIndex]
     : 'bg-transparent text-[var(--foreground)] border-transparent'
-    
+
   // Custom styles
   const customBg = data.bg_color as string
   const customText = data.text_color as string
@@ -120,29 +120,29 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
     <>
       {/* Context Menu (Only if not read only) */}
       {!isReadOnly && contextMenu && createPortal(
-        <div 
+        <div
           className="fixed z-[100] flex flex-col gap-2 items-start"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
-          
+
           {/* Formatting Popovers */}
           {activeMenu === 'color' && (
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
               <div className="text-xs font-semibold text-gray-500 mb-1 flex justify-between">
                 <span>Cores</span>
-                <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
+                <button onClick={() => setActiveMenu('none')}><X size={14} /></button>
               </div>
               <div className="text-[10px] uppercase font-bold text-gray-400">Fundo</div>
               <div className="flex flex-wrap gap-1">
                 {THEME_COLORS.map(c => (
-                  <button key={'bg-'+c} onClick={() => updateFormatting({bg_color: c === 'transparent' ? null : c})} className="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style={{backgroundColor: c === 'transparent' ? '#f3f4f6' : c}} />
+                  <button key={'bg-' + c} onClick={() => updateFormatting({ bg_color: c === 'transparent' ? null : c })} className="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style={{ backgroundColor: c === 'transparent' ? '#f3f4f6' : c }} />
                 ))}
               </div>
               <div className="text-[10px] uppercase font-bold text-gray-400 mt-1">Texto</div>
               <div className="flex flex-wrap gap-1">
                 {THEME_COLORS.map(c => (
-                  <button key={'tx-'+c} onClick={() => updateFormatting({text_color: c === 'transparent' ? null : c})} className="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style={{backgroundColor: c === 'transparent' ? '#f3f4f6' : c}} />
+                  <button key={'tx-' + c} onClick={() => updateFormatting({ text_color: c === 'transparent' ? null : c })} className="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style={{ backgroundColor: c === 'transparent' ? '#f3f4f6' : c }} />
                 ))}
               </div>
             </div>
@@ -150,66 +150,66 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
           {activeMenu === 'image' && (
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
-               <div className="text-xs font-semibold text-gray-500 flex justify-between">
+              <div className="text-xs font-semibold text-gray-500 flex justify-between">
                 <span>URL da Imagem</span>
-                <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
+                <button onClick={() => setActiveMenu('none')}><X size={14} /></button>
               </div>
-              <input 
-                type="text" 
-                placeholder="https://..." 
-                value={tempUrl} 
+              <input
+                type="text"
+                placeholder="https://..."
+                value={tempUrl}
                 onChange={e => setTempUrl(e.target.value)}
                 className="w-full text-xs p-1 border rounded"
                 onKeyDown={(e) => {
-                  if(e.key === 'Enter') {
-                    updateFormatting({image_url: tempUrl})
+                  if (e.key === 'Enter') {
+                    updateFormatting({ image_url: tempUrl })
                     setActiveMenu('none')
                     setTempUrl('')
                   }
                 }}
               />
-              <button onClick={() => { updateFormatting({image_url: tempUrl}); setActiveMenu('none'); setTempUrl('') }} className="text-xs bg-blue-500 text-white rounded py-1">Aplicar</button>
-              <button onClick={() => { updateFormatting({image_url: null}); setActiveMenu('none') }} className="text-xs text-red-500 py-1">Remover</button>
+              <button onClick={() => { updateFormatting({ image_url: tempUrl }); setActiveMenu('none'); setTempUrl('') }} className="text-xs bg-blue-500 text-white rounded py-1">Aplicar</button>
+              <button onClick={() => { updateFormatting({ image_url: null }); setActiveMenu('none') }} className="text-xs text-red-500 py-1">Remover</button>
             </div>
           )}
 
           {activeMenu === 'link' && (
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
-               <div className="text-xs font-semibold text-gray-500 flex justify-between">
+              <div className="text-xs font-semibold text-gray-500 flex justify-between">
                 <span>Link URL</span>
-                <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
+                <button onClick={() => setActiveMenu('none')}><X size={14} /></button>
               </div>
-              <input 
-                type="text" 
-                placeholder="https://..." 
-                value={tempUrl} 
+              <input
+                type="text"
+                placeholder="https://..."
+                value={tempUrl}
                 onChange={e => setTempUrl(e.target.value)}
                 className="w-full text-xs p-1 border rounded"
                 onKeyDown={(e) => {
-                  if(e.key === 'Enter') {
-                    updateFormatting({link_url: tempUrl})
+                  if (e.key === 'Enter') {
+                    updateFormatting({ link_url: tempUrl })
                     setActiveMenu('none')
                     setTempUrl('')
                   }
                 }}
               />
-              <button onClick={() => { updateFormatting({link_url: tempUrl}); setActiveMenu('none'); setTempUrl('') }} className="text-xs bg-blue-500 text-white rounded py-1">Aplicar</button>
-              <button onClick={() => { updateFormatting({link_url: null}); setActiveMenu('none') }} className="text-xs text-red-500 py-1">Remover</button>
+              <button onClick={() => { updateFormatting({ link_url: tempUrl }); setActiveMenu('none'); setTempUrl('') }} className="text-xs bg-blue-500 text-white rounded py-1">Aplicar</button>
+              <button onClick={() => { updateFormatting({ link_url: null }); setActiveMenu('none') }} className="text-xs text-red-500 py-1">Remover</button>
             </div>
           )}
 
           {activeMenu === 'icon' && (
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
-               <div className="text-xs font-semibold text-gray-500 flex justify-between">
+              <div className="text-xs font-semibold text-gray-500 flex justify-between">
                 <span>Ícone (Emoji)</span>
-                <button onClick={() => setActiveMenu('none')}><X size={14}/></button>
+                <button onClick={() => setActiveMenu('none')}><X size={14} /></button>
               </div>
               <div className="flex flex-wrap gap-2 text-lg">
                 {['🚀', '💡', '🔥', '✅', '⭐', '❤️', '🎯', '💰', '📊', '🌐', '📌', '⚠️'].map(emoji => (
-                  <button key={emoji} onClick={() => { updateFormatting({icon: emoji}); setActiveMenu('none') }} className="hover:scale-125 transition-transform">{emoji}</button>
+                  <button key={emoji} onClick={() => { updateFormatting({ icon: emoji }); setActiveMenu('none') }} className="hover:scale-125 transition-transform">{emoji}</button>
                 ))}
               </div>
-              <button onClick={() => { updateFormatting({icon: null}); setActiveMenu('none') }} className="text-xs text-red-500 py-1 mt-1">Remover</button>
+              <button onClick={() => { updateFormatting({ icon: null }); setActiveMenu('none') }} className="text-xs text-red-500 py-1 mt-1">Remover</button>
             </div>
           )}
 
@@ -219,17 +219,17 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'link' ? 'none' : 'link'); setTempUrl(data.link_url as string || '') }} className="p-1.5 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-md transition-colors" title="Link"><Link size={16} /></button>
             <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'icon' ? 'none' : 'icon') }} className="p-1.5 text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-md transition-colors" title="Ícone"><Smile size={16} /></button>
             <div className="w-[1px] bg-gray-200 dark:bg-gray-700 mx-1"></div>
-            <button onClick={(e) => { e.stopPropagation(); if(typeof data.onAI === 'function') data.onAI(id) }} className="p-1.5 text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-md transition-colors" title="Gerar Ideias (AI)"><Wand2 size={16} /></button>
+            <button onClick={(e) => { e.stopPropagation(); if (typeof data.onAI === 'function') data.onAI(id) }} className="p-1.5 text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-md transition-colors" title="Gerar Ideias (AI)"><Wand2 size={16} /></button>
             <button onClick={(e) => { e.stopPropagation(); setIsEditing(true) }} className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors" title="Editar Texto"><Type size={16} /></button>
             {!isRoot && (
-              <button onClick={(e) => { e.stopPropagation(); if(typeof data.onDelete === 'function') data.onDelete(id) }} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors" title="Excluir (Delete)"><Trash2 size={16} /></button>
+              <button onClick={(e) => { e.stopPropagation(); if (typeof data.onDelete === 'function') data.onDelete(id) }} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors" title="Excluir (Delete)"><Trash2 size={16} /></button>
             )}
           </div>
         </div>,
         document.body
       )}
 
-      <div 
+      <div
         className={`
           relative px-2 py-1 rounded-xl flex flex-col items-center justify-center w-max transition-all group
           ${customBg ? '' : themeClass}
@@ -241,21 +241,22 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         onContextMenu={onContextMenu}
       >
         {!isRoot && (
-          <Handle 
-            type="target" 
-            position={Position.Left} 
-            className="opacity-0 !-ml-[7px]" 
-            style={{ borderColor: branchColor }} 
+          <Handle
+            type="target"
+            id={data.direction === 'left' ? 'right' : 'left'}
+            position={data.direction === 'left' ? Position.Right : Position.Left}
+            className={`opacity-0 ${data.direction === 'left' ? '!-mr-[7px]' : '!-ml-[7px]'}`}
+            style={{ borderColor: branchColor }}
           />
         )}
-        
+
         {!!data.image_url && (
           <img src={data.image_url as string} alt="Node media" className="max-w-[120px] max-h-[80px] object-contain rounded mb-1 border border-gray-100 dark:border-gray-800" />
         )}
 
         <div className="flex items-center gap-1.5">
           {!!data.icon && <span className="text-lg">{data.icon as string}</span>}
-          
+
           {isEditing ? (
             <input
               ref={inputRef}
@@ -265,7 +266,9 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
               onBlur={onBlur}
               onMouseDown={(e) => e.stopPropagation()}
               onDoubleClick={(e) => e.stopPropagation()}
-              className={`nodrag nopan outline-none bg-transparent text-left w-full min-w-[80px] ${isRoot ? 'font-medium text-xl uppercase' : 'font-normal text-[16px]'}`}
+              className={`nodrag nopan outline-none bg-transparent text-left w-full min-w-[80px] ${isRoot
+                ? 'text-[42px] font-bold tracking-tight text-slate-800'
+                : 'text-[18px] font-normal'}`}
               style={{ color: customText || 'inherit' }}
             />
           ) : (
@@ -284,21 +287,21 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         {/* Toggle Collapse Button & Connector */}
         {!!data.hasChildren && (
           <>
-            <div 
-              className="absolute top-1/2 -translate-y-1/2 z-0" 
-              style={{ 
-                right: data.childCount === 1 ? '-12px' : '-8px', 
-                width: data.childCount === 1 ? '12px' : '8px', 
-                height: '3px', 
-                backgroundColor: branchColor 
-              }} 
+            <div
+              className={`absolute top-1/2 -translate-y-1/2 z-0 ${data.direction === 'left' ? '' : ''}`}
+              style={{
+                [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-12px' : '-8px',
+                width: data.childCount === 1 ? '12px' : '8px',
+                height: '3px',
+                backgroundColor: branchColor
+              }}
             />
-            <button 
-              onClick={(e) => { e.stopPropagation(); if(typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
+            <button
+              onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
               className="absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
-              style={{ 
-                right: data.childCount === 1 ? '-28px' : '-16px', 
-                borderColor: branchColor 
+              style={{
+                [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-28px' : '-16px',
+                borderColor: branchColor
               }}
               title={data.collapsed ? "Expandir" : "Recolher"}
             >
@@ -307,24 +310,46 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           </>
         )}
 
-        <Handle 
-          type="source" 
-          position={Position.Right} 
-          className="opacity-0" 
-          style={{ right: data.hasChildren ? (data.childCount === 1 ? '-28px' : '-16px') : '0px' }} 
-          isConnectable={false} 
-        />
+        {isRoot ? (
+          <>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="right"
+              className="opacity-0"
+              style={{ right: '0px' }}
+              isConnectable={false}
+            />
+            <Handle
+              type="source"
+              position={Position.Left}
+              id="left"
+              className="opacity-0"
+              style={{ left: '0px' }}
+              isConnectable={false}
+            />
+          </>
+        ) : (
+          <Handle
+            type="source"
+            id={data.direction === 'left' ? 'left' : 'right'}
+            position={data.direction === 'left' ? Position.Left : Position.Right}
+            className="opacity-0"
+            style={{ [data.direction === 'left' ? 'left' : 'right']: data.hasChildren ? (data.childCount === 1 ? '-28px' : '-16px') : '0px' }}
+            isConnectable={false}
+          />
+        )}
 
         {/* Add Child Button */}
         {selected && !isReadOnly && (
-          <div className="absolute -right-10 top-1/2 -translate-y-1/2 flex items-center z-20">
-            <button 
+          <div className={`absolute top-1/2 -translate-y-1/2 flex items-center z-20 ${data.direction === 'left' ? '-left-10 flex-row-reverse' : '-right-10'}`}>
+            <button
               onClick={(e) => { e.stopPropagation(); handleAddChild() }}
               className="w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm"
             >
               <Plus size={14} />
             </button>
-            <div className="hidden md:flex flex-col gap-1.5 absolute left-8 w-[200px] pointer-events-none">
+            <div className={`hidden md:flex flex-col gap-1.5 absolute w-[200px] pointer-events-none ${data.direction === 'left' ? 'right-8 items-end' : 'left-8'}`}>
               <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
                 <span className="border border-[var(--border)] rounded px-1.5 py-0.5 text-gray-500 bg-[var(--node-bg)]">Tab</span> para criar tópico filho
               </div>
@@ -337,7 +362,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
         {/* Add Sibling Button */}
         {selected && !isRoot && !isReadOnly && (
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); handleAddSibling() }}
             className="absolute -bottom-[26px] left-1/2 -translate-x-1/2 w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm z-10"
           >

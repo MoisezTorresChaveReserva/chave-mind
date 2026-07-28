@@ -231,9 +231,11 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     }
 
     const positions = new Map<string, {x: number, y: number}>()
+    const nodeDirections = new Map<string, 'left' | 'right'>()
 
-    const assignPositions = (nodeId: string, cx: number, cy: number) => {
+    const assignPositions = (nodeId: string, cx: number, cy: number, direction: 'left' | 'right' = 'right') => {
       positions.set(nodeId, { x: cx, y: cy })
+      nodeDirections.set(nodeId, direction)
       
       const node = nodesList.find(n => n.id === nodeId)
       if (node?.data.collapsed) return 
@@ -245,27 +247,66 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       let currentY = cy - totalHeight / 2
       
       const nodeWidth = getNodeWidth(nodeId)
-      
       const gap = children.length === 1 ? 40 : 100
       
       for (const cid of children) {
         const childHeight = getSubtreeHeight(cid)
         const childCenterY = currentY + childHeight / 2
-        // Dynamic X placement: Right edge of parent + calculated gap
-        assignPositions(cid, cx + nodeWidth + gap, childCenterY)
+        
+        const childNodeWidth = getNodeWidth(cid)
+        const newX = direction === 'left' ? cx - childNodeWidth - gap : cx + nodeWidth + gap
+        
+        assignPositions(cid, newX, childCenterY, direction)
         currentY += childHeight + VERTICAL_SPACING
       }
     }
 
     const roots = nodesList.filter(n => !n.data.parent_id || !nodesList.find(x => x.id === n.data.parent_id))
-    roots.forEach(r => assignPositions(r.id, r.position.x, r.position.y))
+    
+    roots.forEach(r => {
+      positions.set(r.id, { x: r.position.x, y: r.position.y })
+      const children = childrenMap.get(r.id) || []
+      
+      const totalLeftHeight = children.filter(cid => {
+         const node = nodesList.find(n => n.id === cid)
+         return node && node.position.x < r.position.x
+      }).reduce((sum, cid) => sum + getSubtreeHeight(cid) + VERTICAL_SPACING, 0) - VERTICAL_SPACING
+      
+      const totalRightHeight = children.filter(cid => {
+         const node = nodesList.find(n => n.id === cid)
+         return !node || node.position.x >= r.position.x
+      }).reduce((sum, cid) => sum + getSubtreeHeight(cid) + VERTICAL_SPACING, 0) - VERTICAL_SPACING
+
+      let currentLeftY = r.position.y - Math.max(0, totalLeftHeight) / 2
+      let currentRightY = r.position.y - Math.max(0, totalRightHeight) / 2
+      
+      const rootWidth = getNodeWidth(r.id)
+      
+      children.forEach(cid => {
+        const childNode = nodesList.find(n => n.id === cid)
+        const childHeight = getSubtreeHeight(cid)
+        const gap = children.length === 1 ? 40 : 100
+        
+        if (childNode && childNode.position.x < r.position.x) {
+          const childCenterY = currentLeftY + childHeight / 2
+          const childNodeWidth = getNodeWidth(cid)
+          assignPositions(cid, r.position.x - childNodeWidth - gap, childCenterY, 'left')
+          currentLeftY += childHeight + VERTICAL_SPACING
+        } else {
+          const childCenterY = currentRightY + childHeight / 2
+          assignPositions(cid, r.position.x + rootWidth + gap, childCenterY, 'right')
+          currentRightY += childHeight + VERTICAL_SPACING
+        }
+      })
+    })
 
     return nodesList.map(n => {
       const pos = positions.get(n.id)
+      const dir = nodeDirections.get(n.id) || 'right'
       if (pos) {
-        return { ...n, position: { x: pos.x, y: pos.y } }
+        return { ...n, position: { x: pos.x, y: pos.y }, data: { ...n.data, direction: dir } }
       }
-      return n
+      return { ...n, data: { ...n.data, direction: dir } }
     })
   }, [])
 
@@ -741,10 +782,13 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
 
     // 4. Process edges
     let finalEdges = edges.filter(e => e.id !== 'ghost-preview-edge').map(e => {
-      const targetNode = nodes.find(n => n.id === e.target)
+      const targetNode = finalNodes.find(n => n.id === e.target)
       const color = targetNode ? (nodeColors.get(targetNode.id) || '#ec4899') : '#ec4899'
+      const isLeft = (targetNode?.data as any)?.direction === 'left'
       return {
         ...e,
+        sourceHandle: isLeft ? 'left' : 'right',
+        targetHandle: isLeft ? 'right' : 'left',
         hidden: !visibleNodeIds.has(e.source) || !visibleNodeIds.has(e.target),
         style: { ...e.style, stroke: color, strokeWidth: 3 }
       }
@@ -786,7 +830,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         hidden: false,
         animated: false,
         style: { stroke: '#e5e7eb', strokeWidth: 3 }
-      })
+      } as any)
     }
 
     return { displayNodes: finalNodes, displayEdges: finalEdges }
