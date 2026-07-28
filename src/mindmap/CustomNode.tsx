@@ -260,11 +260,11 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         {/* Toggle Collapse Button & Connector */}
         {!!data.hasChildren && (
           <>
-            <div className="absolute top-1/2 -translate-y-1/2 z-0" style={{ right: '-16px', width: '16px', height: '3px', backgroundColor: branchColor }} />
+            <div className="absolute top-1/2 -translate-y-1/2 z-0" style={{ right: '-8px', width: '8px', height: '3px', backgroundColor: branchColor }} />
             <button 
               onClick={(e) => { e.stopPropagation(); if(typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
               className="absolute top-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[3px]"
-              style={{ right: '-25px', borderColor: branchColor }}
+              style={{ right: '-17px', borderColor: branchColor }}
               title={data.collapsed ? "Expandir" : "Recolher"}
             >
               {!!data.collapsed && <div className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: branchColor }} />}
@@ -276,7 +276,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           type="source" 
           position={Position.Right} 
           className="opacity-0" 
-          style={{ right: data.hasChildren ? '-16px' : '0px' }} 
+          style={{ right: data.hasChildren ? '-8px' : '0px' }} 
           isConnectable={false} 
         />
 
