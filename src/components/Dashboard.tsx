@@ -1,10 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Search, MoreVertical, Star, Clock } from 'lucide-react'
+import { Plus, Search, MoreVertical, Star, Clock, Upload } from 'lucide-react'
 import { MindMap } from '@/types'
 import { supabase } from '@/supabase/client'
 import { useRouter } from 'next/navigation'
+
+const generateId = () => {
+  return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
+}
 
 export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[], user: any }) {
   const [maps, setMaps] = useState<MindMap[]>(initialMaps)
@@ -21,6 +25,74 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
     if (data && !error) {
       router.push(`/map/${data.id}`)
     }
+  }
+
+  const handleImport = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0]
+      if (!file) return
+
+      try {
+        const text = await file.text()
+        const parsed = JSON.parse(text)
+        
+        if (!parsed.nodes || !parsed.edges) {
+          throw new Error('Arquivo JSON inválido para mapa mental.')
+        }
+
+        // Create new map
+        const { data: newMap, error: mapError } = await supabase
+          .from('mind_maps')
+          .insert([{ user_id: user.id, title: 'Mapa Importado' }])
+          .select()
+          .single()
+        
+        if (mapError || !newMap) throw mapError
+
+        // Remap IDs to prevent conflicts
+        const idMap = new Map<string, string>()
+        const newNodesList = parsed.nodes.map((n: any) => {
+          const newId = generateId()
+          idMap.set(n.id, newId)
+          return { ...n, id: newId }
+        })
+
+        const dbNodes = newNodesList.map((n: any) => {
+          const originalParent = n.data?.parent_id
+          const newParentId = originalParent ? idMap.get(originalParent) : null
+          
+          return {
+            id: n.id,
+            map_id: newMap.id,
+            text: n.data?.label || '',
+            x: n.position?.x || 0,
+            y: n.position?.y || 0,
+            parent_id: newParentId,
+            collapsed: n.data?.collapsed || false,
+            visual_data: n.data || {}
+          }
+        })
+
+        const dbEdges = parsed.edges.map((e: any) => ({
+          id: generateId(),
+          map_id: newMap.id,
+          source: idMap.get(e.source),
+          target: idMap.get(e.target)
+        })).filter((e: any) => e.source && e.target)
+
+        // Insert into DB
+        if (dbNodes.length > 0) await supabase.from('nodes').insert(dbNodes)
+        if (dbEdges.length > 0) await supabase.from('edges').insert(dbEdges)
+
+        router.push(`/map/${newMap.id}`)
+      } catch (err: any) {
+        alert('Erro ao importar o mapa: ' + err.message)
+      }
+    }
+    input.click()
   }
 
   const filteredMaps = maps.filter(m => m.title.toLowerCase().includes(search.toLowerCase()))
@@ -45,6 +117,12 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
               className="pl-9 pr-4 py-2 border border-[var(--border)] rounded-lg text-sm outline-none focus:border-[#2563EB] w-64 bg-gray-50/50"
             />
           </div>
+          <button 
+            onClick={handleImport}
+            className="flex items-center gap-2 bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+          >
+            <Upload size={16} /> Importar
+          </button>
           <button 
             onClick={createNewMap}
             className="flex items-center gap-2 bg-[#2563EB] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
