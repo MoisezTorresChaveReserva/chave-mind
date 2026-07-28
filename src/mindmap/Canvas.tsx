@@ -246,11 +246,13 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       
       const nodeWidth = getNodeWidth(nodeId)
       
+      const gap = children.length === 1 ? 40 : 100
+      
       for (const cid of children) {
         const childHeight = getSubtreeHeight(cid)
         const childCenterY = currentY + childHeight / 2
-        // Dynamic X placement: Right edge of parent + fixed gap of 100px
-        assignPositions(cid, cx + nodeWidth + 100, childCenterY)
+        // Dynamic X placement: Right edge of parent + calculated gap
+        assignPositions(cid, cx + nodeWidth + gap, childCenterY)
         currentY += childHeight + VERTICAL_SPACING
       }
     }
@@ -731,6 +733,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         ...n.data,
         isColorful,
         hasChildren: (childrenMap.get(n.id) || []).length > 0,
+        childCount: (childrenMap.get(n.id) || []).length,
         branchColor: nodeColors.get(n.id) || '#ec4899',
         isRoot: !n.data.parent_id || !nodes.find(x => x.id === n.data.parent_id)
       }
