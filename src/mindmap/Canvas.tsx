@@ -190,12 +190,14 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     const NODE_HEIGHT = 40
     const VERTICAL_SPACING = 20
 
-    const estimateNodeWidth = (nodeId: string) => {
+    const getNodeWidth = (nodeId: string) => {
       const node = nodesList.find(n => n.id === nodeId)
+      if (node && node.measured?.width) return node.measured.width
+      
       if (!node) return 100
       const label = (node.data.label as string) || ''
       const isRoot = !node.data.parent_id
-      // Base width for character
+      // Base width for character (fallback)
       const charWidth = isRoot ? 12 : 9
       // Padding and toggle button space
       return Math.max(60, label.length * charWidth + 50)
@@ -226,13 +228,13 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       const totalHeight = getSubtreeHeight(nodeId)
       let currentY = cy - totalHeight / 2
       
-      const nodeWidth = estimateNodeWidth(nodeId)
+      const nodeWidth = getNodeWidth(nodeId)
       
       for (const cid of children) {
         const childHeight = getSubtreeHeight(cid)
         const childCenterY = currentY + childHeight / 2
-        // Dynamic X placement: Right edge of parent + fixed gap of 60px
-        assignPositions(cid, cx + nodeWidth + 60, childCenterY)
+        // Dynamic X placement: Right edge of parent + fixed gap of 40px
+        assignPositions(cid, cx + nodeWidth + 40, childCenterY)
         currentY += childHeight + VERTICAL_SPACING
       }
     }
