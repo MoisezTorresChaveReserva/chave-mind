@@ -72,7 +72,13 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
             y: n.position?.y || 0,
             parent_id: newParentId,
             collapsed: n.data?.collapsed || false,
-            visual_data: n.data || {}
+            color: JSON.stringify({
+              bg_color: n.data?.bg_color,
+              text_color: n.data?.text_color,
+              image_url: n.data?.image_url,
+              icon: n.data?.icon,
+              link_url: n.data?.link_url
+            })
           }
         })
 
@@ -80,7 +86,8 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
           id: generateId(),
           map_id: newMap.id,
           source: idMap.get(e.source),
-          target: idMap.get(e.target)
+          target: idMap.get(e.target),
+          color: e.style?.stroke || '#ec4899'
         })).filter((e: any) => e.source && e.target)
 
         // Insert into DB
