@@ -1,6 +1,6 @@
 import React, { memo, useState, useRef, useEffect } from 'react'
 import { Handle, Position, NodeProps, NodeToolbar, useReactFlow } from '@xyflow/react'
-import { Plus, Wand2, Type, Trash2, Palette, Image as ImageIcon, Link, Smile, X } from 'lucide-react'
+import { Plus, Wand2, Type, Trash2, Palette, Image as ImageIcon, Link, Link2, Smile, X } from 'lucide-react'
 
 const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
@@ -213,12 +213,12 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           />
         )}
         
-        {data.image_url && (
+        {!!data.image_url && (
           <img src={data.image_url as string} alt="Node media" className="max-w-[120px] max-h-[80px] object-contain rounded mb-1 border border-gray-100 dark:border-gray-800" />
         )}
 
         <div className="flex items-center gap-1.5">
-          {data.icon && <span className="text-lg">{data.icon as string}</span>}
+          {!!data.icon && <span className="text-lg">{data.icon as string}</span>}
           
           {isEditing ? (
             <input
@@ -238,15 +238,15 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             </span>
           )}
 
-          {data.link_url && (
-            <a href={data.link_url as string} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700 ml-1" onClick={e => e.stopPropagation()}>
-              <Link size={12} />
+          {!!data.link_url && (
+            <a href={data.link_url as string} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline flex items-center justify-center gap-1 mt-1">
+              <Link2 size={10} /> Link Externo
             </a>
           )}
         </div>
 
         {/* Toggle Collapse Button & Connector */}
-        {data.hasChildren && (
+        {!!data.hasChildren && (
           <>
             <div className="absolute top-1/2 -translate-y-1/2 z-0" style={{ right: '-16px', width: '16px', height: '3px', backgroundColor: branchColor }} />
             <button 
@@ -255,7 +255,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
               style={{ right: '-25px', borderColor: branchColor }}
               title={data.collapsed ? "Expandir" : "Recolher"}
             >
-              {data.collapsed && <div className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: branchColor }} />}
+              {!!data.collapsed && <div className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: branchColor }} />}
             </button>
           </>
         )}
