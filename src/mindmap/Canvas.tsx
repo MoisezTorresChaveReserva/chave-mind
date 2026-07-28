@@ -407,16 +407,29 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
     })))
   }, [setNodes, mapId, applyAutoLayout, takeSnapshot])
 
-  const onAddChild = useCallback((parentId: string) => {
+  const lastRootChildDirection = useRef<'left' | 'right'>('right')
+
+  const onAddChild = useCallback((parentId: string, direction?: 'left' | 'right') => {
     takeSnapshot()
     const parent = getNodes().find(n => n.id === parentId)
     if (!parent) return
+
+    let spawnX = parent.position.x
+    const isRoot = !parent.data.parent_id
+    if (isRoot) {
+        const finalDirection = direction || lastRootChildDirection.current
+        lastRootChildDirection.current = finalDirection
+        spawnX = finalDirection === 'left' ? parent.position.x - 200 : parent.position.x + 200
+    } else {
+        const parentDirection = parent.data.direction === 'left' ? 'left' : 'right'
+        spawnX = parentDirection === 'left' ? parent.position.x - 200 : parent.position.x + 200
+    }
 
     const newNodeId = generateId()
     const newNode: Node = {
       id: newNodeId,
       type: 'custom',
-      position: { x: 0, y: 0 },
+      position: { x: spawnX, y: parent.position.y },
       data: { label: 'Novo Nó', parent_id: parentId }
     }
     const newEdge: Edge = {
@@ -601,6 +614,12 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
 
     takeSnapshot()
     const allNodes = getNodes()
+    
+    const rootNode = allNodes.find(n => !n.data.parent_id)
+    if (rootNode && node.data.parent_id === rootNode.id) {
+       lastRootChildDirection.current = node.position.x < rootNode.position.x ? 'left' : 'right'
+    }
+    
     const targetNode = allNodes.find(n => n.data.isDropTarget)
 
     if (targetNode) {

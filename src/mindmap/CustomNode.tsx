@@ -92,8 +92,8 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
     }
   }
 
-  const handleAddChild = () => {
-    if (typeof data.onAddChild === 'function') data.onAddChild(id)
+  const handleAddChild = (direction?: 'left' | 'right') => {
+    if (typeof data.onAddChild === 'function') data.onAddChild(id, direction)
   }
 
   const handleAddSibling = () => {
@@ -342,22 +342,52 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
         {/* Add Child Button */}
         {selected && !isReadOnly && (
-          <div className={`absolute top-1/2 -translate-y-1/2 flex items-center z-20 ${data.direction === 'left' ? '-left-10 flex-row-reverse' : '-right-10'}`}>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleAddChild() }}
-              className="w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm"
-            >
-              <Plus size={14} />
-            </button>
-            <div className={`hidden md:flex flex-col gap-1.5 absolute w-[200px] pointer-events-none ${data.direction === 'left' ? 'right-8 items-end' : 'left-8'}`}>
-              <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
-                <span className="border border-[var(--border)] rounded px-1.5 py-0.5 text-gray-500 bg-[var(--node-bg)]">Tab</span> para criar tópico filho
+          isRoot ? (
+            <>
+              {/* Right Add Button */}
+              <div className="absolute -right-10 top-1/2 -translate-y-1/2 flex items-center z-20">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleAddChild('right') }}
+                  className="w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm"
+                  title="Adicionar à Direita"
+                >
+                  <Plus size={14} />
+                </button>
+                <div className="hidden md:flex flex-col gap-1.5 absolute left-8 w-[200px] pointer-events-none">
+                  <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
+                    <span className="border border-[var(--border)] rounded px-1.5 py-0.5 text-gray-500 bg-[var(--node-bg)]">Tab</span> para criar tópico filho
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
-                <span className="border border-[var(--border)] rounded px-1.5 py-0.5 text-gray-500 bg-[var(--node-bg)]">Enter</span> para criar tópico irmão
+              {/* Left Add Button */}
+              <div className="absolute -left-10 top-1/2 -translate-y-1/2 flex items-center z-20 flex-row-reverse">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleAddChild('left') }}
+                  className="w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm"
+                  title="Adicionar à Esquerda"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className={`absolute top-1/2 -translate-y-1/2 flex items-center z-20 ${data.direction === 'left' ? '-left-10 flex-row-reverse' : '-right-10'}`}>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleAddChild() }}
+                className="w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm"
+              >
+                <Plus size={14} />
+              </button>
+              <div className={`hidden md:flex flex-col gap-1.5 absolute w-[200px] pointer-events-none ${data.direction === 'left' ? 'right-8 items-end' : 'left-8'}`}>
+                <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
+                  <span className="border border-[var(--border)] rounded px-1.5 py-0.5 text-gray-500 bg-[var(--node-bg)]">Tab</span> para criar tópico filho
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
+                  <span className="border border-[var(--border)] rounded px-1.5 py-0.5 text-gray-500 bg-[var(--node-bg)]">Enter</span> para criar tópico irmão
+                </div>
               </div>
             </div>
-          </div>
+          )
         )}
 
         {/* Add Sibling Button */}
