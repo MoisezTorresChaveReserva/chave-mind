@@ -381,8 +381,18 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       position: { x: 0, y: 0 },
       data: { label: 'Novo Nó', parent_id: node.data.parent_id }
     }
-    
-    setNodes(nds => applyAutoLayout([...nds.map(n => ({...n, selected: false})), {...newNode, selected: true}]))
+    setNodes(nds => {
+      const nodeIndex = nds.findIndex(n => n.id === nodeId)
+      const newNds = nds.map(n => ({...n, selected: false}))
+      const finalNewNode = {...newNode, selected: true}
+      
+      if (nodeIndex !== -1) {
+        newNds.splice(nodeIndex + 1, 0, finalNewNode)
+      } else {
+        newNds.push(finalNewNode)
+      }
+      return applyAutoLayout(newNds)
+    })
     
     if (node.data.parent_id) {
        const newEdge: Edge = {
