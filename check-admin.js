@@ -19,11 +19,9 @@ const supabaseKey = envVars['SUPABASE_SERVICE_ROLE_KEY']
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function check() {
-  const { data: maps, error: mapsError } = await supabase.from('mind_maps').select('id, user_id, title')
-  console.log('Maps as admin:', maps?.length)
-  if (maps?.length > 0) {
-    console.log('First map user_id:', maps[0].user_id, 'Type:', typeof maps[0].user_id)
-  }
+  const { data: tags, error: tagsError } = await supabase.from('map_tags').select('*').limit(1)
+  console.log('Tags as admin error:', tagsError)
+  console.log('First tag:', tags?.[0])
 }
 
 check()

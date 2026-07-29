@@ -20,7 +20,7 @@ async function check() {
   const { data, error } = await supabase.rpc('exec_sql', { sql: `
     SELECT polname, polcmd, polqual 
     FROM pg_policy 
-    WHERE polrelid = 'mind_maps'::regclass;
+    WHERE polrelid = 'map_tags'::regclass;
   ` })
   
   if (error) {
