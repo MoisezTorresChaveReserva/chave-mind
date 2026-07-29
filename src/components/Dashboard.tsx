@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Search, MoreVertical, Star, Clock, Upload } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Search, MoreVertical, Star, Clock, Upload, LogOut, Trash2 } from 'lucide-react'
 import { MindMap } from '@/types'
 import { supabase } from '@/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -13,7 +13,36 @@ const generateId = () => {
 export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[], user: any }) {
   const [maps, setMaps] = useState<MindMap[]>(initialMaps)
   const [search, setSearch] = useState('')
+  const [activeMapMenu, setActiveMapMenu] = useState<string | null>(null)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    const handleClick = () => {
+      setActiveMapMenu(null)
+      setShowUserMenu(false)
+    }
+    window.addEventListener('click', handleClick)
+    return () => window.removeEventListener('click', handleClick)
+  }, [])
+
+  const handleDeleteMap = async (id: string) => {
+    setIsDeleting(id)
+    const { error } = await supabase.from('mind_maps').delete().eq('id', id)
+    if (!error) {
+      setMaps(maps.filter(m => m.id !== id))
+    } else {
+      alert('Erro ao excluir mapa')
+    }
+    setIsDeleting(null)
+    setActiveMapMenu(null)
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   const createNewMap = async () => {
     const { data, error } = await supabase
@@ -136,8 +165,26 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
           >
             <Plus size={16} /> Novo Mapa
           </button>
-          <div className="w-8 h-8 rounded-full bg-gray-200 border border-gray-300 flex items-center justify-center text-sm font-medium text-gray-600">
-            {user.email?.charAt(0).toUpperCase()}
+          <div className="relative">
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowUserMenu(!showUserMenu); setActiveMapMenu(null) }}
+              className="w-8 h-8 rounded-full bg-gray-200 border border-gray-300 flex items-center justify-center text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors focus:outline-none"
+            >
+              {user.email?.charAt(0).toUpperCase()}
+            </button>
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
+                <div className="px-4 py-2 border-b border-gray-100">
+                  <p className="text-sm font-medium text-gray-900 truncate">{user.email}</p>
+                </div>
+                <button 
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                >
+                  <LogOut size={16} /> Sair
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -169,11 +216,24 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
                 </div>
               </div>
 
-              <div className="absolute top-4 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                 {/* This would ideally be a dropdown menu */}
-                <button className="p-1 rounded hover:bg-gray-100 text-gray-500" onClick={(e) => e.stopPropagation()}>
+              <div className={`absolute top-4 right-2 transition-opacity ${activeMapMenu === map.id ? 'opacity-100 z-10' : 'opacity-0 group-hover:opacity-100'}`}>
+                <button 
+                  className="p-1 rounded hover:bg-gray-100 text-gray-500" 
+                  onClick={(e) => { e.stopPropagation(); setActiveMapMenu(activeMapMenu === map.id ? null : map.id); setShowUserMenu(false) }}
+                >
                   <MoreVertical size={16} />
                 </button>
+                {activeMapMenu === map.id && (
+                  <div className="absolute right-0 mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteMap(map.id) }}
+                      disabled={isDeleting === map.id}
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50 transition-colors"
+                    >
+                      <Trash2 size={16} /> {isDeleting === map.id ? 'Excluindo...' : 'Excluir'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
