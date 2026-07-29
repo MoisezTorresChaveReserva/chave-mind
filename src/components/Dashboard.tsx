@@ -150,10 +150,10 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
     router.push('/login')
   }
 
-  const createNewMap = async () => {
+  const createNewMap = async (type: 'mindmap' | 'flowchart' = 'mindmap') => {
     const { data, error } = await supabase
       .from('mind_maps')
-      .insert([{ user_id: user.id, title: 'Novo Mapa Mental' }])
+      .insert([{ user_id: user.id, title: type === 'flowchart' ? 'Novo Fluxograma' : 'Novo Mapa Mental', map_type: type }])
       .select()
       .single()
     
@@ -267,12 +267,28 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
             >
               <Upload size={18} className="text-gray-500" /> <span className="hidden md:inline">Importar</span>
             </button>
-            <button 
-              onClick={createNewMap}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95 hover:scale-[1.02]"
-            >
-              <Plus size={18} /> <span className="hidden md:inline">Novo Mapa</span>
-            </button>
+            <div className="relative group">
+              <button 
+                onClick={() => createNewMap('mindmap')}
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95 hover:scale-[1.02]"
+              >
+                <Plus size={18} /> <span className="hidden md:inline">Novo...</span>
+              </button>
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col overflow-hidden z-50">
+                <button 
+                  onClick={() => createNewMap('mindmap')}
+                  className="px-4 py-3 text-sm text-left hover:bg-gray-50 flex items-center gap-2 text-gray-700"
+                >
+                  <Sparkles size={16} className="text-blue-500" /> Mapa Mental
+                </button>
+                <button 
+                  onClick={() => createNewMap('flowchart')}
+                  className="px-4 py-3 text-sm text-left hover:bg-gray-50 flex items-center gap-2 border-t border-gray-50 text-gray-700"
+                >
+                  <Layout size={16} className="text-indigo-500" /> Fluxograma
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="w-px h-8 bg-gray-200 mx-1 hidden sm:block"></div>
@@ -446,7 +462,14 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
                 </div>
                 
                 <div className="p-5 flex flex-col justify-end flex-1 bg-white relative z-10 border-t border-gray-100/50">
-                  <h3 className="font-bold text-gray-900 truncate text-lg">{map.title}</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-gray-900 truncate text-lg flex-1 pr-2">{map.title}</h3>
+                    {map.map_type === 'flowchart' ? (
+                       <Layout size={18} className="text-indigo-400 shrink-0" title="Fluxograma" />
+                    ) : (
+                       <Sparkles size={18} className="text-blue-400 shrink-0" title="Mapa Mental" />
+                    )}
+                  </div>
                   <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400 mt-2">
                     <Clock size={14} /> Editado em {new Date(map.updated_at).toLocaleDateString()}
                   </div>

@@ -5,6 +5,7 @@ import { MindMap, MapNode, MapEdge, MapPresentation, Slide } from '@/types'
 import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight, Undo2, Redo2, Focus, Layers, Download, Network, ListTree, GitMerge } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Canvas from '@/mindmap/Canvas'
+import FlowchartCanvas from '@/flowchart/FlowchartCanvas'
 import Sidebar from '@/components/Sidebar'
 import ShareModal from '@/components/ShareModal'
 import ExportModal from '@/components/ExportModal'
@@ -403,27 +404,39 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
 
         {/* Canvas Area */}
         <main className={`flex-1 w-full h-full ${presentationMode === 'playing' || isFocusMode ? 'pt-0' : 'pt-14'} transition-all`}>
-          <Canvas 
-            mapId={map.id} 
-            initialNodes={initialNodes} 
-            initialEdges={initialEdges} 
-            initialNodeTags={initialNodeTags}
-            setSaveStatus={setSaveStatus}
-            isColorful={isColorful}
-            isOutlined={isOutlined}
-            globalLineColor={globalLineColor}
-            layoutMode={layoutMode}
-            theme={theme}
-            presentationMode={presentationMode}
-            slides={slides}
-            setSlides={setSlides}
-            currentSlideIndex={currentSlideIndex}
-            isCapturingMode={isCapturingMode}
-            setIsCapturingMode={setIsCapturingMode}
-            updatingSlideId={updatingSlideId}
-            setUpdatingSlideId={setUpdatingSlideId}
-            isReadOnly={isReadOnly}
-          />
+          {map.map_type === 'flowchart' ? (
+            <FlowchartCanvas 
+              mapId={map.id} 
+              initialNodes={initialNodes} 
+              initialEdges={initialEdges} 
+              initialNodeTags={initialNodeTags}
+              setSaveStatus={setSaveStatus}
+              theme={theme}
+              isReadOnly={isReadOnly}
+            />
+          ) : (
+            <Canvas 
+              mapId={map.id} 
+              initialNodes={initialNodes} 
+              initialEdges={initialEdges} 
+              initialNodeTags={initialNodeTags}
+              setSaveStatus={setSaveStatus}
+              isColorful={isColorful}
+              isOutlined={isOutlined}
+              globalLineColor={globalLineColor}
+              layoutMode={layoutMode}
+              theme={theme}
+              presentationMode={presentationMode}
+              slides={slides}
+              setSlides={setSlides}
+              currentSlideIndex={currentSlideIndex}
+              isCapturingMode={isCapturingMode}
+              setIsCapturingMode={setIsCapturingMode}
+              updatingSlideId={updatingSlideId}
+              setUpdatingSlideId={setUpdatingSlideId}
+              isReadOnly={isReadOnly}
+            />
+          )}
         </main>
 
         {/* Presentation Sidebar */}

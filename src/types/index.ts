@@ -24,6 +24,7 @@ export type MindMap = {
   id: string
   user_id: string
   title: string
+  map_type?: string
   favorite: boolean
   color?: string
   thumbnail?: string
