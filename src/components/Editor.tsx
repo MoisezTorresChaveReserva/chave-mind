@@ -8,6 +8,7 @@ import Canvas from '@/mindmap/Canvas'
 import Sidebar from '@/components/Sidebar'
 import ShareModal from '@/components/ShareModal'
 import { supabase } from '@/supabase/client'
+import { toJpeg } from 'html-to-image'
 
 export default function Editor({ map, initialNodes, initialEdges, user, isReadOnly = false }: { map: MindMap, initialNodes: MapNode[], initialEdges: MapEdge[], user: any, isReadOnly?: boolean }) {
   const router = useRouter()
@@ -44,6 +45,7 @@ export default function Editor({ map, initialNodes, initialEdges, user, isReadOn
       try {
         const parsed = JSON.parse(map.thumbnail)
         if (Array.isArray(parsed)) setSlides(parsed)
+        else if (parsed.slides) setSlides(parsed.slides)
       } catch (e) {
         console.error("Failed to parse slides", e)
       }
@@ -53,7 +55,14 @@ export default function Editor({ map, initialNodes, initialEdges, user, isReadOn
   // Save slides when they change
   useEffect(() => {
     if (slides.length > 0 || map.thumbnail) { // Avoid saving empty if never had slides
-      supabase.from('mind_maps').update({ thumbnail: JSON.stringify(slides) }).eq('id', map.id).then()
+      let preview = null
+      if (map.thumbnail) {
+        try {
+          const parsed = JSON.parse(map.thumbnail)
+          if (!Array.isArray(parsed) && parsed.preview) preview = parsed.preview
+        } catch(e) {}
+      }
+      supabase.from('mind_maps').update({ thumbnail: JSON.stringify({ slides, preview }) }).eq('id', map.id).then()
     }
   }, [slides, map.id])
 
@@ -107,7 +116,28 @@ export default function Editor({ map, initialNodes, initialEdges, user, isReadOn
         {presentationMode !== 'playing' && (
           <header className="h-14 bg-[var(--background)]/80 backdrop-blur border-b border-[var(--border)] flex items-center justify-between px-4 z-10 absolute top-0 left-0 right-0">
           <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/')} className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
+            <button 
+              onClick={async () => {
+                const flowViewport = document.querySelector('.react-flow__viewport') as HTMLElement
+                if (flowViewport) {
+                  try {
+                    setSaveStatus('saving')
+                    const dataUrl = await toJpeg(flowViewport, { 
+                      backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
+                      quality: 0.2,
+                      pixelRatio: 0.5
+                    })
+                    let preview = dataUrl
+                    supabase.from('mind_maps').update({ thumbnail: JSON.stringify({ slides, preview }) }).eq('id', map.id).then()
+                  } catch (e) {
+                    console.error('Failed to capture thumbnail', e)
+                  }
+                }
+                router.push('/')
+              }} 
+              className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+              title="Voltar"
+            >
               <ChevronLeft size={18} />
             </button>
             <div className="flex flex-col">
