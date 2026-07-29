@@ -331,8 +331,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         id: n.id,
         map_id: mapId,
         text: n.data.label as string,
-        position_x: n.position.x,
-        position_y: n.position.y,
+        x: n.position.x,
+        y: n.position.y,
         parent_id: n.data.parent_id || null,
         collapsed: n.data.collapsed as boolean || false,
         color: JSON.stringify({
