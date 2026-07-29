@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { MindMap, MapNode, MapEdge, MapPresentation, Slide } from '@/types'
-import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight, Undo2, Redo2, Focus } from 'lucide-react'
+import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight, Undo2, Redo2, Focus, Layers } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Canvas from '@/mindmap/Canvas'
 import Sidebar from '@/components/Sidebar'
@@ -233,6 +233,29 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
             >
               {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
             </button>
+            <div className="relative group">
+              <button 
+                className={`p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors`}
+                title="Nível de Detalhamento"
+              >
+                <Layers size={16} />
+              </button>
+              <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity flex flex-col py-1 z-50">
+                <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider text-center border-b border-gray-100 dark:border-gray-700 mb-1">Níveis</div>
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => {
+                       setDepthLevel(level)
+                       window.dispatchEvent(new CustomEvent('set-depth-level', { detail: { level } }))
+                    }}
+                    className={`w-full px-4 py-2 text-sm font-medium transition-colors text-left ${depthLevel === level ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                  >
+                    Nível {level}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
             <button 
               onClick={() => {
