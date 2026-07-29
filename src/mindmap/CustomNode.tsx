@@ -61,11 +61,13 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   // Custom styles
   const customBg = data.bg_color as string
   const customText = data.text_color as string
-  const customStyle: React.CSSProperties = {}
-  if (customBg) customStyle.backgroundColor = customBg
-  if (customText) customStyle.color = customText
-
-  const branchColor = (data.branchColor as string) || '#ec4899'
+  const branchColor = data.branch_color as string || '#ec4899'
+  
+  const customStyle = {
+    backgroundColor: customBg || undefined,
+    border: (data.has_text_border || data.isOutlined) ? `2px solid ${customText || branchColor}` : undefined
+  } as React.CSSProperties
+  
   const isRoot = data.isRoot as boolean
   const isReadOnly = data.isReadOnly as boolean
 
@@ -195,6 +197,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           onClick={(e) => e.stopPropagation()}
         >
 
+
           {/* Formatting Popovers */}
           {activeMenu === 'color' && (
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
@@ -208,12 +211,24 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                   <button key={'bg-' + c} onClick={() => updateFormatting({ bg_color: c === 'transparent' ? null : c })} className="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style={{ backgroundColor: c === 'transparent' ? '#f3f4f6' : c }} />
                 ))}
               </div>
-              <div className="text-[10px] uppercase font-bold text-gray-400 mt-1">Texto</div>
+              <div className="text-[10px] uppercase font-bold text-gray-400 mt-1">Texto / Contorno</div>
               <div className="flex flex-wrap gap-1">
                 {THEME_COLORS.map(c => (
                   <button key={'tx-' + c} onClick={() => updateFormatting({ text_color: c === 'transparent' ? null : c })} className="w-5 h-5 rounded-full border border-gray-300 shadow-sm" style={{ backgroundColor: c === 'transparent' ? '#f3f4f6' : c }} />
                 ))}
               </div>
+              
+              <div className="h-px bg-gray-200 dark:bg-gray-700 w-full my-1" />
+              
+              <label className="flex items-center gap-2 cursor-pointer w-full text-xs text-gray-700 dark:text-gray-300">
+                <input 
+                  type="checkbox" 
+                  checked={!!data.has_text_border}
+                  onChange={(e) => updateFormatting({ has_text_border: e.target.checked })}
+                  className="rounded border-gray-300 text-blue-500 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 w-4 h-4"
+                />
+                Ativar contorno
+              </label>
             </div>
           )}
 
@@ -458,24 +473,78 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         onDoubleClick={onDoubleClick}
         onContextMenu={onContextMenu}
       >
-        {!!data.image_url && (
-          <img src={data.image_url as string} alt="Node media" className="max-w-[180px] max-h-[120px] object-contain rounded mb-1 border border-gray-100 dark:border-gray-800" />
+        {!isRoot && (
+          <Handle
+            type="target"
+            id={data.direction === 'left' ? 'right' : 'left'}
+            position={data.direction === 'left' ? Position.Right : Position.Left}
+            className={`opacity-0 ${data.direction === 'left' ? '!-mr-[7px]' : '!-ml-[7px]'}`}
+            style={{ borderColor: branchColor, top: '50%' }}
+          />
         )}
 
-        <div className="flex flex-col w-full relative">
-          {/* Main Content Row (Text + Handles) */}
-          <div className="relative flex items-center justify-center w-full min-h-[28px]">
-            {!isRoot && (
-              <Handle
-                type="target"
-                id={data.direction === 'left' ? 'right' : 'left'}
-                position={data.direction === 'left' ? Position.Right : Position.Left}
-                className={`opacity-0 ${data.direction === 'left' ? '!-mr-[7px]' : '!-ml-[7px]'}`}
-                style={{ borderColor: branchColor, top: '50%' }}
-              />
-            )}
+        {!!data.hasChildren && (
+          <>
+            <div
+              className={`absolute top-1/2 -translate-y-1/2 z-0`}
+              style={{
+                [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-12px' : '-8px',
+                width: data.childCount === 1 ? '12px' : '8px',
+                height: '3px',
+                backgroundColor: branchColor
+              }}
+            />
+            <button
+              onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
+              className="absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
+              style={{
+                [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-28px' : '-16px',
+                borderColor: branchColor
+              }}
+              title={data.collapsed ? "Expandir" : "Recolher"}
+            >
+              {!!data.collapsed && <div className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: branchColor }} />}
+            </button>
+          </>
+        )}
 
-            <div className="flex items-center gap-1.5 z-10 px-1">
+        {isRoot ? (
+          <>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="right"
+              className="opacity-0"
+              style={{ right: '0px', top: '50%' }}
+              isConnectable={false}
+            />
+            <Handle
+              type="source"
+              position={Position.Left}
+              id="left"
+              className="opacity-0"
+              style={{ left: '0px', top: '50%' }}
+              isConnectable={false}
+            />
+          </>
+        ) : (
+          <Handle
+            type="source"
+            id={data.direction === 'left' ? 'left' : 'right'}
+            position={data.direction === 'left' ? Position.Left : Position.Right}
+            className="opacity-0"
+            style={{ [data.direction === 'left' ? 'left' : 'right']: data.hasChildren ? (data.childCount === 1 ? '-28px' : '-16px') : '0px', top: '50%' }}
+            isConnectable={false}
+          />
+        )}
+
+        {!!data.image_url && (
+          <img src={data.image_url as string} alt="Node media" className="max-w-[180px] max-h-[120px] object-contain rounded mb-1 border border-gray-100 dark:border-gray-800 relative z-10" />
+        )}
+
+        <div className="flex flex-col w-full relative z-10">
+          {/* Main Content Row (Text) */}
+          <div className="relative flex items-center justify-center w-full min-h-[28px]">
             {!!data.icon && <span className="text-lg">{data.icon as string}</span>}
 
             {isEditing ? (
@@ -503,63 +572,6 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
               <a href={data.link_url as string} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline flex items-center justify-center gap-1 mt-1">
                 <Link2 size={10} /> Link Externo
               </a>
-            )}
-          </div>
-          
-            {/* Toggle Collapse Button & Connector */}
-            {!!data.hasChildren && (
-              <>
-                <div
-                  className={`absolute top-1/2 -translate-y-1/2 z-0 ${data.direction === 'left' ? '' : ''}`}
-                  style={{
-                    [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-12px' : '-8px',
-                    width: data.childCount === 1 ? '12px' : '8px',
-                    height: '3px',
-                    backgroundColor: branchColor
-                  }}
-                />
-                <button
-                  onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
-                  className="absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
-                  style={{
-                    [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-28px' : '-16px',
-                    borderColor: branchColor
-                  }}
-                  title={data.collapsed ? "Expandir" : "Recolher"}
-                >
-                  {!!data.collapsed && <div className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: branchColor }} />}
-                </button>
-              </>
-            )}
-
-            {isRoot ? (
-              <>
-                <Handle
-                  type="source"
-                  position={Position.Right}
-                  id="right"
-                  className="opacity-0"
-                  style={{ right: '0px', top: '50%' }}
-                  isConnectable={false}
-                />
-                <Handle
-                  type="source"
-                  position={Position.Left}
-                  id="left"
-                  className="opacity-0"
-                  style={{ left: '0px', top: '50%' }}
-                  isConnectable={false}
-                />
-              </>
-            ) : (
-              <Handle
-                type="source"
-                id={data.direction === 'left' ? 'left' : 'right'}
-                position={data.direction === 'left' ? Position.Left : Position.Right}
-                className="opacity-0"
-                style={{ [data.direction === 'left' ? 'left' : 'right']: data.hasChildren ? (data.childCount === 1 ? '-28px' : '-16px') : '0px', top: '50%' }}
-                isConnectable={false}
-              />
             )}
           </div>
 

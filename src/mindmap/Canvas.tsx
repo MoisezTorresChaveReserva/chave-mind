@@ -43,7 +43,7 @@ const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
 }
 
-function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, updatingSlideId, setUpdatingSlideId, isReadOnly }: any) {
+function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, isOutlined, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, updatingSlideId, setUpdatingSlideId, isReadOnly }: any) {
   const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, zoomTo, getIntersectingNodes } = useReactFlow()
   const { x: vpX, y: vpY, zoom: vpZoom } = useViewport()
   
@@ -363,7 +363,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
           text_color: n.data.text_color,
           image_url: n.data.image_url,
           icon: n.data.icon,
-          link_url: n.data.link_url
+          link_url: n.data.link_url,
+          has_text_border: n.data.has_text_border
         })
       }))
       
@@ -825,9 +826,9 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
   // Wrap nodeTypes to inject callbacks
   const memoizedNodeTypes = useMemo(() => {
     return {
-      custom: (props: any) => <CustomNode {...props} data={{...props.data, onChange: onNodeLabelChange, onToggleCollapse, onAddChild, onAddSibling, onDelete: onDeleteNode, onAI, onChangeFormatting, isColorful, theme, isReadOnly}} />
+      custom: (props: any) => <CustomNode {...props} data={{...props.data, onChange: onNodeLabelChange, onToggleCollapse, onAddChild, onAddSibling, onDelete: onDeleteNode, onAI, onChangeFormatting, isColorful, isOutlined, theme, isReadOnly}} />
     }
-  }, [onNodeLabelChange, onToggleCollapse, onAddChild, onAddSibling, onDeleteNode, onAI, onChangeFormatting, isColorful, theme, isReadOnly])
+  }, [onNodeLabelChange, onToggleCollapse, onAddChild, onAddSibling, onDeleteNode, onAI, onChangeFormatting, isColorful, isOutlined, theme, isReadOnly])
 
   // Keyboard bindings
   useEffect(() => {
@@ -962,6 +963,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       data: {
         ...n.data,
         isColorful,
+        isOutlined,
         hasChildren: (childrenMap.get(n.id) || []).length > 0,
         childCount: (childrenMap.get(n.id) || []).length,
         branchColor: nodeColors.get(n.id) || '#ec4899',
@@ -1023,7 +1025,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
 
     return { displayNodes: finalNodes, displayEdges: finalEdges }
-  }, [nodes, edges, isColorful])
+  }, [nodes, edges, isColorful, isOutlined])
 
   const playingSlide = presentationMode === 'playing' && slides ? slides[currentSlideIndex] : null;
   

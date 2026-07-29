@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Search, MoreVertical, Star, Clock, Upload, LogOut, Trash2, Image as ImageIcon, Sparkles, Layout } from 'lucide-react'
+import { Plus, Search, MoreVertical, Star, Clock, Upload, LogOut, Trash2, Image as ImageIcon, Sparkles, Layout, Copy } from 'lucide-react'
 import { MindMap } from '@/types'
 import { supabase } from '@/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -89,6 +89,59 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
       alert('Erro ao excluir mapa')
     }
     setIsDeleting(null)
+    setActiveMapMenu(null)
+  }
+
+  const handleDuplicateMap = async (id: string) => {
+    try {
+      const originalMap = maps.find(m => m.id === id)
+      if (!originalMap) return
+      
+      const { data: newMap, error: mapError } = await supabase
+        .from('mind_maps')
+        .insert([{ user_id: user.id, title: originalMap.title + ' (Cópia)' }])
+        .select()
+        .single()
+      
+      if (mapError || !newMap) throw mapError
+
+      const { data: nodes } = await supabase.from('nodes').select('*').eq('map_id', id)
+      const { data: edges } = await supabase.from('edges').select('*').eq('map_id', id)
+      
+      const idMap = new Map<string, string>()
+      
+      if (nodes && nodes.length > 0) {
+        const newNodesList = nodes.map(n => {
+          const newId = generateId()
+          idMap.set(n.id, newId)
+          return { ...n, id: newId, map_id: newMap.id }
+        })
+        
+        const finalNodes = newNodesList.map(n => ({
+          ...n,
+          parent_id: n.parent_id ? idMap.get(n.parent_id) || null : null
+        }))
+        
+        await supabase.from('nodes').insert(finalNodes)
+      }
+      
+      if (edges && edges.length > 0) {
+        const newEdges = edges.map(e => ({
+          id: generateId(),
+          map_id: newMap.id,
+          source: idMap.get(e.source),
+          target: idMap.get(e.target),
+          color: e.color
+        })).filter(e => e.source && e.target)
+        
+        if (newEdges.length > 0) await supabase.from('edges').insert(newEdges)
+      }
+
+      // Add to local state
+      setMaps([newMap, ...maps])
+    } catch (err: any) {
+      alert('Erro ao duplicar mapa: ' + err.message)
+    }
     setActiveMapMenu(null)
   }
 
@@ -373,6 +426,12 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
                           exit={{ opacity: 0, scale: 0.9, y: 5 }}
                           className="absolute right-0 mt-2 w-36 bg-white border border-gray-100 rounded-xl shadow-xl py-1 z-50 origin-top-right"
                         >
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleDuplicateMap(map.id) }}
+                            className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors border-b border-gray-100"
+                          >
+                            <Copy size={16} /> Duplicar
+                          </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleDeleteMap(map.id) }}
                             disabled={isDeleting === map.id}

@@ -18,6 +18,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [isColorful, setIsColorful] = useState(false)
+  const [isOutlined, setIsOutlined] = useState(false)
   const [isFocusMode, setIsFocusMode] = useState(false)
   const [depthLevel, setDepthLevel] = useState(5)
 
@@ -220,6 +221,13 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
               </>
             )}
             <button 
+              onClick={() => setIsOutlined(!isOutlined)} 
+              className={`p-1.5 rounded-md transition-colors ${isOutlined ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
+              title="Modo Contorno (Bordas Globais)"
+            >
+              <div className="w-4 h-4 border-2 border-current rounded border-dashed" />
+            </button>
+            <button 
               onClick={() => setIsColorful(!isColorful)} 
               className={`p-1.5 rounded-md transition-colors ${isColorful ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
               title="Modo Colorido"
@@ -373,6 +381,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
             initialNodeTags={initialNodeTags}
             setSaveStatus={setSaveStatus}
             isColorful={isColorful}
+            isOutlined={isOutlined}
             theme={theme}
             presentationMode={presentationMode}
             slides={slides}
