@@ -1082,6 +1082,24 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         </div>
       ))}
 
+      {/* Playing Mode Spotlight */}
+      {presentationMode === 'playing' && slides && slides[currentSlideIndex] && (
+        <div
+          className="absolute pointer-events-none z-10 transition-all duration-700 ease-in-out"
+          style={{
+            left: 0,
+            top: 0,
+            transform: `translate(${slides[currentSlideIndex].bounds.x * vpZoom + vpX}px, ${slides[currentSlideIndex].bounds.y * vpZoom + vpY}px) scale(${vpZoom})`,
+            transformOrigin: '0 0',
+            width: `${slides[currentSlideIndex].bounds.width}px`,
+            height: `${slides[currentSlideIndex].bounds.height}px`,
+            boxShadow: theme === 'dark' ? '0 0 0 9999px rgba(0, 0, 0, 0.85)' : '0 0 0 9999px rgba(255, 255, 255, 0.85)',
+            borderRadius: '16px',
+            border: theme === 'dark' ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.1)'
+          }}
+        />
+      )}
+
       {/* Current Drawing Box */}
       {isDrawing && drawBox && (
         <div
