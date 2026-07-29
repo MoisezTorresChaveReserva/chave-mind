@@ -75,13 +75,18 @@ export default function FlowchartNode({ data, selected, id }: NodeProps) {
       case 'circle': return 'rounded-full w-24 h-24 flex items-center justify-center'
       case 'pill': return 'rounded-full px-6 py-3 min-w-[120px] flex items-center justify-center'
       case 'parallelogram': return '-skew-x-12 px-6 py-3 min-w-[120px] flex items-center justify-center'
-      case 'cylinder': return 'rounded-t-full rounded-b-full px-6 py-4 min-w-[100px] flex items-center justify-center border-t-8 border-black/10' // simplistic cylinder
+      case 'cylinder': return 'rounded-t-full rounded-b-full px-6 py-4 min-w-[100px] flex items-center justify-center border-t-8 border-black/10'
+      case 'text': return 'px-2 py-1 min-w-[80px] min-h-[30px] flex items-center justify-center bg-transparent'
       case 'rectangle':
       default: return 'rounded-md px-4 py-3 min-w-[120px] min-h-[50px] flex items-center justify-center'
     }
   }
 
   const innerContentClass = shape === 'diamond' ? '-rotate-45' : shape === 'parallelogram' ? 'skew-x-12' : ''
+  const isText = shape === 'text'
+  const borderAndShadow = isText 
+    ? `border-none bg-transparent shadow-none ${selected ? 'ring-2 ring-blue-500 ring-offset-4 rounded' : ''}` 
+    : `border border-gray-300 transition-all ${selected ? 'ring-2 ring-blue-500 ring-offset-4 shadow-lg scale-[1.02]' : 'shadow-sm hover:shadow-md'}`
 
   return (
     <div 
@@ -90,8 +95,8 @@ export default function FlowchartNode({ data, selected, id }: NodeProps) {
       onContextMenu={onContextMenu}
     >
       <div 
-        className={`${getShapeClasses()} border border-gray-300 transition-all ${selected ? 'ring-2 ring-blue-500 ring-offset-4 shadow-lg scale-[1.02]' : 'shadow-sm hover:shadow-md'}`}
-        style={{ backgroundColor: bgColor, color: textColor }}
+        className={`${getShapeClasses()} ${borderAndShadow}`}
+        style={{ backgroundColor: isText ? 'transparent' : bgColor, color: textColor }}
       >
         <div className={`w-full flex items-center justify-center text-center ${innerContentClass}`}>
           {isEditing ? (

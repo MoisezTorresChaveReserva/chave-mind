@@ -305,7 +305,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
               />
               <button onClick={() => { if(tempUrl.trim()) { updateFormatting({ image_url: tempUrl }); setActiveMenu('none'); setTempUrl('') } }} className="text-xs bg-blue-500 hover:bg-blue-600 text-white rounded py-1.5 transition-colors">Aplicar URL</button>
               
-              {data.image_url && (
+              {!!data.image_url && (
                 <button onClick={() => { updateFormatting({ image_url: null }); setActiveMenu('none') }} className="text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded py-1.5 transition-colors mt-1">Remover Imagem atual</button>
               )}
             </div>

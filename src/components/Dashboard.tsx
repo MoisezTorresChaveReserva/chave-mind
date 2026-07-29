@@ -465,9 +465,9 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold text-gray-900 truncate text-lg flex-1 pr-2">{map.title}</h3>
                     {map.map_type === 'flowchart' ? (
-                       <Layout size={18} className="text-indigo-400 shrink-0" title="Fluxograma" />
+                       <span title="Fluxograma"><Layout size={18} className="text-indigo-400 shrink-0" /></span>
                     ) : (
-                       <Sparkles size={18} className="text-blue-400 shrink-0" title="Mapa Mental" />
+                       <span title="Mapa Mental"><Sparkles size={18} className="text-blue-400 shrink-0" /></span>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400 mt-2">
@@ -493,7 +493,7 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
               Não encontramos nenhum mapa correspondente à sua pesquisa ou você ainda não criou nenhum.
             </p>
             <button 
-              onClick={createNewMap}
+              onClick={() => createNewMap('mindmap')}
               className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
             >
               <Plus size={18} /> Criar seu primeiro Mapa

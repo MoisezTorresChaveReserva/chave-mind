@@ -984,12 +984,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }))
   }, [setNodes, takeSnapshot])
 
-  // Wrap nodeTypes to inject callbacks
-  const memoizedNodeTypes = useMemo(() => {
-    return {
-      custom: (props: any) => <CustomNode {...props} data={{...props.data, onChange: onNodeLabelChange, onToggleCollapse, onAddChild, onAddSibling, onDelete: onDeleteNode, onAI, onChangeFormatting, isColorful, isOutlined, theme, isReadOnly}} />
-    }
-  }, [onNodeLabelChange, onToggleCollapse, onAddChild, onAddSibling, onDeleteNode, onAI, onChangeFormatting, isColorful, isOutlined, theme, isReadOnly])
+
 
   // Keyboard bindings
   useEffect(() => {
@@ -1130,7 +1125,16 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         hasChildren: (childrenMap.get(n.id) || []).length > 0,
         childCount: (childrenMap.get(n.id) || []).length,
         branchColor: globalLineColor || nodeColors.get(n.id) || '#ec4899',
-        isRoot: !n.data.parent_id || !nodes.find(x => x.id === n.data.parent_id)
+        isRoot: !n.data.parent_id || !nodes.find(x => x.id === n.data.parent_id),
+        onChange: onNodeLabelChange,
+        onToggleCollapse,
+        onAddChild,
+        onAddSibling,
+        onDelete: onDeleteNode,
+        onAI,
+        onChangeFormatting,
+        theme,
+        isReadOnly
       }
     }))
 
@@ -1207,7 +1211,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
 
     return { displayNodes: finalNodes, displayEdges: finalEdges }
-  }, [nodes, edges, isColorful, isOutlined, globalLineColor, exportingSlide, presentationMode, currentSlideIndex, slides])
+  }, [nodes, edges, isColorful, isOutlined, globalLineColor, exportingSlide, presentationMode, currentSlideIndex, slides, onNodeLabelChange, onToggleCollapse, onAddChild, onAddSibling, onDeleteNode, onAI, onChangeFormatting, theme, isReadOnly])
 
   const playingSlide = exportingSlide || (presentationMode === 'playing' && slides ? slides[currentSlideIndex] : null)
   
@@ -1346,7 +1350,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         onNodesChange={onNodesChangeWrapper}
         onEdgesChange={onEdgesChange}
         onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
-        nodeTypes={memoizedNodeTypes}
+        nodeTypes={nodeTypes}
         onNodeDrag={isReadOnly ? undefined : onNodeDrag}
         onNodeDragStop={isReadOnly ? undefined : onNodeDragStop}
         nodesDraggable={!isReadOnly}

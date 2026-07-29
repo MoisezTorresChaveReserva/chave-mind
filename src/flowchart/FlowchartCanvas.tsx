@@ -13,14 +13,16 @@ import {
   addEdge,
   ConnectionMode,
   MarkerType,
-  BackgroundVariant
+  BackgroundVariant,
+  ReactFlowProvider,
+  useReactFlow
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import FlowchartNode from './FlowchartNode'
 import { MapNode, MapEdge } from '@/types'
 import { useMapStore } from '@/store/mapStore'
 import { supabase } from '@/supabase/client'
-import { Save, MousePointer2, Square, Circle, Triangle, Database, Hexagon, Component } from 'lucide-react'
+import { Save, MousePointer2, Square, Circle, Triangle, Database, Hexagon, Component, Type } from 'lucide-react'
 
 const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
 
@@ -34,7 +36,7 @@ type FlowchartCanvasProps = {
   isReadOnly?: boolean
 }
 
-export default function FlowchartCanvas({
+function FlowchartCanvasInner({
   mapId,
   initialNodes,
   initialEdges,
@@ -42,6 +44,7 @@ export default function FlowchartCanvas({
   theme,
   isReadOnly = false
 }: FlowchartCanvasProps) {
+  const { screenToFlowPosition } = useReactFlow()
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
@@ -116,7 +119,7 @@ export default function FlowchartCanvas({
 
   const onConnect = useCallback((params: Connection) => {
     if (isReadOnly) return
-    const newEdge = {
+    const newEdge: Edge = {
       ...params,
       id: generateId(),
       type: 'smoothstep',
@@ -155,13 +158,10 @@ export default function FlowchartCanvas({
       const shape = event.dataTransfer.getData('application/shape')
       if (typeof type === 'undefined' || !type) return
 
-      const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect()
-      if (!reactFlowBounds) return
-
-      const position = {
-        x: event.clientX - reactFlowBounds.left,
-        y: event.clientY - reactFlowBounds.top,
-      }
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      })
 
       const newNode = {
         id: generateId(),
@@ -180,7 +180,7 @@ export default function FlowchartCanvas({
 
       setNodes((nds) => nds.concat(newNode))
     },
-    [isReadOnly, handleDeleteNode, handleNodeChange, handleChangeFormatting]
+    [isReadOnly, handleDeleteNode, handleNodeChange, handleChangeFormatting, screenToFlowPosition]
   )
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -281,6 +281,9 @@ export default function FlowchartCanvas({
           <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center cursor-move hover:scale-110 transition-transform" onDragStart={(e) => onDragStart(e, 'flowchart', 'parallelogram')} draggable title="Dados (Paralelogramo)">
              <div className="w-5 h-4 border-2 border-current -skew-x-12" />
           </div>
+          <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center cursor-move hover:scale-110 transition-transform" onDragStart={(e) => onDragStart(e, 'flowchart', 'text')} draggable title="Texto Avulso">
+             <Type size={20} />
+          </div>
         </div>
       )}
 
@@ -302,5 +305,13 @@ export default function FlowchartCanvas({
         <Controls className="!bg-white dark:!bg-gray-800 !border-gray-200 dark:!border-gray-700 !rounded-xl !shadow-lg" />
       </ReactFlow>
     </div>
+  )
+}
+
+export default function FlowchartCanvas(props: FlowchartCanvasProps) {
+  return (
+    <ReactFlowProvider>
+      <FlowchartCanvasInner {...props} />
+    </ReactFlowProvider>
   )
 }

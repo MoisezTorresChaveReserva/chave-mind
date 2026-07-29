@@ -38,6 +38,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [layoutMode, setLayoutMode] = useState<'mindmap' | 'orgchart' | 'list'>('mindmap')
+  const isFlowchart = map.map_type === 'flowchart'
   
   // Zustand Store
   const { mapTags, setMapTags } = useMapStore()
@@ -204,7 +205,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
           </div>
 
           <div className="flex items-center gap-2 relative">
-            {!isReadOnly && (
+            {!isReadOnly && !isFlowchart && (
               <>
                 <button 
                   onClick={() => window.dispatchEvent(new CustomEvent('undo-action'))}
@@ -225,45 +226,47 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                 <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
               </>
             )}
-            <div className="relative group">
-              <button 
-                className={`p-1.5 rounded-md transition-colors ${(isOutlined || isColorful || globalLineColor) ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
-                title="Estilos e Cores"
-              >
-                <Palette size={16} />
-              </button>
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity flex flex-col py-2 z-50">
-                <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-700 mb-1">Visual</div>
-                
-                <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
-                  <input type="checkbox" checked={isColorful} onChange={() => setIsColorful(!isColorful)} className="rounded border-gray-300 text-blue-500" />
-                  Modo Colorido
-                </label>
-                
-                <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
-                  <input type="checkbox" checked={isOutlined} onChange={() => setIsOutlined(!isOutlined)} className="rounded border-gray-300 text-blue-500" />
-                  Modo Contorno
-                </label>
+            {!isFlowchart && (
+              <div className="relative group">
+                <button 
+                  className={`p-1.5 rounded-md transition-colors ${(isOutlined || isColorful || globalLineColor) ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
+                  title="Estilos e Cores"
+                >
+                  <Palette size={16} />
+                </button>
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity flex flex-col py-2 z-50">
+                  <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-700 mb-1">Visual</div>
+                  
+                  <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" checked={isColorful} onChange={() => setIsColorful(!isColorful)} className="rounded border-gray-300 text-blue-500" />
+                    Modo Colorido
+                  </label>
+                  
+                  <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" checked={isOutlined} onChange={() => setIsOutlined(!isOutlined)} className="rounded border-gray-300 text-blue-500" />
+                    Modo Contorno
+                  </label>
 
-                <div className="px-3 py-1 mt-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-700 mb-1">Cor das Linhas</div>
-                <div className="flex flex-wrap gap-1 px-3 py-1">
-                  <button 
-                    onClick={() => setGlobalLineColor(null)} 
-                    className={`w-5 h-5 rounded-full border shadow-sm flex items-center justify-center ${!globalLineColor ? 'ring-2 ring-blue-500 ring-offset-1' : 'border-gray-300'}`}
-                    style={{ background: 'linear-gradient(45deg, #ef4444, #3b82f6, #22c55e)' }}
-                    title="Multicolorido (Padrão)"
-                  />
-                  {['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899', '#ffffff', '#1f2937'].map(c => (
+                  <div className="px-3 py-1 mt-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-700 mb-1">Cor das Linhas</div>
+                  <div className="flex flex-wrap gap-1 px-3 py-1">
                     <button 
-                      key={c}
-                      onClick={() => setGlobalLineColor(c)} 
-                      className={`w-5 h-5 rounded-full shadow-sm border border-gray-200 ${globalLineColor === c ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
-                      style={{ backgroundColor: c }}
+                      onClick={() => setGlobalLineColor(null)} 
+                      className={`w-5 h-5 rounded-full border shadow-sm flex items-center justify-center ${!globalLineColor ? 'ring-2 ring-blue-500 ring-offset-1' : 'border-gray-300'}`}
+                      style={{ background: 'linear-gradient(45deg, #ef4444, #3b82f6, #22c55e)' }}
+                      title="Multicolorido (Padrão)"
                     />
-                  ))}
+                    {['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899', '#ffffff', '#1f2937'].map(c => (
+                      <button 
+                        key={c}
+                        onClick={() => setGlobalLineColor(c)} 
+                        className={`w-5 h-5 rounded-full shadow-sm border border-gray-200 ${globalLineColor === c ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
             <button 
               onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')} 
               className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
@@ -271,121 +274,124 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
             >
               {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
             </button>
-            <div className="relative group">
-              <button 
-                className={`p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors`}
-                title="Nível de Detalhamento"
-              >
-                <Layers size={16} />
-              </button>
-              <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity flex flex-col py-1 z-50">
-                <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider text-center border-b border-gray-100 dark:border-gray-700 mb-1">Níveis</div>
-                {[1, 2, 3, 4, 5].map((level) => (
-                  <button
-                    key={level}
-                    onClick={() => {
-                       setDepthLevel(level)
-                       window.dispatchEvent(new CustomEvent('set-depth-level', { detail: { level } }))
-                    }}
-                    className={`w-full px-4 py-2 text-sm font-medium transition-colors text-left ${depthLevel === level ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+            {!isFlowchart && (
+              <>
+                <div className="relative group">
+                  <button 
+                    className={`p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors`}
+                    title="Nível de Detalhamento"
                   >
-                    Nível {level}
+                    <Layers size={16} />
                   </button>
-                ))}
-              </div>
-            </div>
-            <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
-            <button 
-              onClick={() => {
-                setIsFocusMode(true)
-                setPresentationMode('edit')
-              }}
-              className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
-              title="Modo Foco"
-            >
-              <Focus size={16} />
-            </button>
-            <div className="relative group">
-              <button 
-                className={`p-1.5 rounded-md transition-colors ${presentationMode !== 'edit' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
-                title="Apresentação"
-              >
-                <MonitorPlay size={16} />
-              </button>
-              <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity flex flex-col py-1 z-50">
-                <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Apresentar</div>
-                {presentations.length === 0 ? (
-                  <div className="px-4 py-2 text-sm text-gray-400 italic">Nenhuma apresentação</div>
-                ) : (
-                  presentations.map(p => (
-                    <button 
-                      key={p.id}
-                      onClick={() => {
-                        setActivePresentationId(p.id)
-                        setSlides(p.slides || [])
-                        if ((p.slides || []).length === 0) {
-                          alert('Adicione pelo menos um slide antes de apresentar!')
-                          return
-                        }
-                        setCurrentSlideIndex(0)
-                        setPresentationMode('playing')
-                      }}
-                      className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/30 flex items-center gap-2 truncate"
-                    >
-                      <Play size={14} className="text-purple-500 flex-shrink-0" /> 
-                      <span className="truncate">{p.name}</span>
-                    </button>
-                  ))
-                )}
-                <div className="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
+                  <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity flex flex-col py-1 z-50">
+                    <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider text-center border-b border-gray-100 dark:border-gray-700 mb-1">Níveis</div>
+                    {[1, 2, 3, 4, 5].map((level) => (
+                      <button
+                        key={level}
+                        onClick={() => {
+                           setDepthLevel(level)
+                           window.dispatchEvent(new CustomEvent('set-depth-level', { detail: { level } }))
+                        }}
+                        className={`w-full px-4 py-2 text-sm font-medium transition-colors text-left ${depthLevel === level ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                      >
+                        Nível {level}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
                 <button 
                   onClick={() => {
-                    setPresentationMode('presentation_setup')
-                    setIsCapturingMode(false)
+                    setIsFocusMode(true)
+                    setPresentationMode('edit')
                   }}
-                  className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+                  title="Modo Foco"
                 >
-                  <Settings size={14} className="text-gray-500 flex-shrink-0" /> Editar apresentações
+                  <Focus size={16} />
                 </button>
-              </div>
-            </div>
-            <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
-            
-            {/* Visualização Dropdown */}
-            <div className="relative group">
-              <button 
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors text-sm font-medium"
-                title="Modo de Visualização"
-              >
-                {layoutMode === 'mindmap' && <Network size={16} />}
-                {layoutMode === 'orgchart' && <GitMerge size={16} className="-rotate-90" />}
-                {layoutMode === 'list' && <ListTree size={16} />}
-                <span>Layout</span>
-              </button>
-              
-              <div className="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-1 z-50">
-                <button 
-                  onClick={() => setLayoutMode('mindmap')}
-                  className={`px-3 py-2 text-sm text-left rounded-lg flex items-center gap-2 ${layoutMode === 'mindmap' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
-                >
-                  <Network size={14} /> Mapa Mental
-                </button>
-                <button 
-                  onClick={() => setLayoutMode('orgchart')}
-                  className={`px-3 py-2 text-sm text-left rounded-lg flex items-center gap-2 ${layoutMode === 'orgchart' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
-                >
-                  <GitMerge size={14} className="-rotate-90" /> Organograma
-                </button>
-                <button 
-                  onClick={() => setLayoutMode('list')}
-                  className={`px-3 py-2 text-sm text-left rounded-lg flex items-center gap-2 ${layoutMode === 'list' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
-                >
-                  <ListTree size={14} /> Lista
-                </button>
-              </div>
-            </div>
-
-            <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
+                <div className="relative group">
+                  <button 
+                    className={`p-1.5 rounded-md transition-colors ${presentationMode !== 'edit' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
+                    title="Apresentação"
+                  >
+                    <MonitorPlay size={16} />
+                  </button>
+                  <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity flex flex-col py-1 z-50">
+                    <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Apresentar</div>
+                    {presentations.length === 0 ? (
+                      <div className="px-4 py-2 text-sm text-gray-400 italic">Nenhuma apresentação</div>
+                    ) : (
+                      presentations.map(p => (
+                        <button 
+                          key={p.id}
+                          onClick={() => {
+                            setActivePresentationId(p.id)
+                            setSlides(p.slides || [])
+                            if ((p.slides || []).length === 0) {
+                              alert('Adicione pelo menos um slide antes de apresentar!')
+                              return
+                            }
+                            setCurrentSlideIndex(0)
+                            setPresentationMode('playing')
+                          }}
+                          className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/30 flex items-center gap-2 truncate"
+                        >
+                          <Play size={14} className="text-purple-500 flex-shrink-0" /> 
+                          <span className="truncate">{p.name}</span>
+                        </button>
+                      ))
+                    )}
+                    <div className="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
+                    <button 
+                      onClick={() => {
+                        setPresentationMode('presentation_setup')
+                        setIsCapturingMode(false)
+                      }}
+                      className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <Settings size={14} className="text-gray-500 flex-shrink-0" /> Editar apresentações
+                    </button>
+                  </div>
+                </div>
+                <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
+                
+                {/* Visualização Dropdown */}
+                <div className="relative group">
+                  <button 
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors text-sm font-medium"
+                    title="Modo de Visualização"
+                  >
+                    {layoutMode === 'mindmap' && <Network size={16} />}
+                    {layoutMode === 'orgchart' && <GitMerge size={16} className="-rotate-90" />}
+                    {layoutMode === 'list' && <ListTree size={16} />}
+                    <span>Layout</span>
+                  </button>
+                  
+                  <div className="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-1 z-50">
+                    <button 
+                      onClick={() => setLayoutMode('mindmap')}
+                      className={`px-3 py-2 text-sm text-left rounded-lg flex items-center gap-2 ${layoutMode === 'mindmap' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                    >
+                      <Network size={14} /> Mapa Mental
+                    </button>
+                    <button 
+                      onClick={() => setLayoutMode('orgchart')}
+                      className={`px-3 py-2 text-sm text-left rounded-lg flex items-center gap-2 ${layoutMode === 'orgchart' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                    >
+                      <GitMerge size={14} className="-rotate-90" /> Organograma
+                    </button>
+                    <button 
+                      onClick={() => setLayoutMode('list')}
+                      className={`px-3 py-2 text-sm text-left rounded-lg flex items-center gap-2 ${layoutMode === 'list' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                    >
+                      <ListTree size={14} /> Lista
+                    </button>
+                  </div>
+                </div>
+                <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
+              </>
+            )}
             <button 
               onClick={() => setIsShareModalOpen(true)}
               className="text-sm px-3 py-1.5 font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
