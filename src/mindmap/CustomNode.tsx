@@ -61,7 +61,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   // Custom styles
   const customBg = data.bg_color as string
   const customText = data.text_color as string
-  const branchColor = data.branch_color as string || '#ec4899'
+  const branchColor = (data.branchColor as string) || (data.branch_color as string) || '#ec4899'
   
   const customStyle = {
     backgroundColor: customBg || undefined,

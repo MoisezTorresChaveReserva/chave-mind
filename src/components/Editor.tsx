@@ -19,6 +19,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [isColorful, setIsColorful] = useState(false)
   const [isOutlined, setIsOutlined] = useState(false)
+  const [globalLineColor, setGlobalLineColor] = useState<string | null>(null)
   const [isFocusMode, setIsFocusMode] = useState(false)
   const [depthLevel, setDepthLevel] = useState(5)
 
@@ -220,20 +221,45 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                 <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
               </>
             )}
-            <button 
-              onClick={() => setIsOutlined(!isOutlined)} 
-              className={`p-1.5 rounded-md transition-colors ${isOutlined ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
-              title="Modo Contorno (Bordas Globais)"
-            >
-              <div className="w-4 h-4 border-2 border-current rounded border-dashed" />
-            </button>
-            <button 
-              onClick={() => setIsColorful(!isColorful)} 
-              className={`p-1.5 rounded-md transition-colors ${isColorful ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
-              title="Modo Colorido"
-            >
-              <Palette size={16} />
-            </button>
+            <div className="relative group">
+              <button 
+                className={`p-1.5 rounded-md transition-colors ${(isOutlined || isColorful || globalLineColor) ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
+                title="Estilos e Cores"
+              >
+                <Palette size={16} />
+              </button>
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity flex flex-col py-2 z-50">
+                <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-700 mb-1">Visual</div>
+                
+                <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" checked={isColorful} onChange={() => setIsColorful(!isColorful)} className="rounded border-gray-300 text-blue-500" />
+                  Modo Colorido
+                </label>
+                
+                <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" checked={isOutlined} onChange={() => setIsOutlined(!isOutlined)} className="rounded border-gray-300 text-blue-500" />
+                  Modo Contorno
+                </label>
+
+                <div className="px-3 py-1 mt-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-700 mb-1">Cor das Linhas</div>
+                <div className="flex flex-wrap gap-1 px-3 py-1">
+                  <button 
+                    onClick={() => setGlobalLineColor(null)} 
+                    className={`w-5 h-5 rounded-full border shadow-sm flex items-center justify-center ${!globalLineColor ? 'ring-2 ring-blue-500 ring-offset-1' : 'border-gray-300'}`}
+                    style={{ background: 'linear-gradient(45deg, #ef4444, #3b82f6, #22c55e)' }}
+                    title="Multicolorido (Padrão)"
+                  />
+                  {['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899', '#ffffff', '#1f2937'].map(c => (
+                    <button 
+                      key={c}
+                      onClick={() => setGlobalLineColor(c)} 
+                      className={`w-5 h-5 rounded-full shadow-sm border border-gray-200 ${globalLineColor === c ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
             <button 
               onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')} 
               className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
@@ -382,6 +408,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
             setSaveStatus={setSaveStatus}
             isColorful={isColorful}
             isOutlined={isOutlined}
+            globalLineColor={globalLineColor}
             theme={theme}
             presentationMode={presentationMode}
             slides={slides}

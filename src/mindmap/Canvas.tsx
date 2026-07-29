@@ -43,7 +43,7 @@ const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
 }
 
-function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, isOutlined, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, updatingSlideId, setUpdatingSlideId, isReadOnly }: any) {
+function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, isOutlined, globalLineColor, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, updatingSlideId, setUpdatingSlideId, isReadOnly }: any) {
   const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, zoomTo, getIntersectingNodes } = useReactFlow()
   const { x: vpX, y: vpY, zoom: vpZoom } = useViewport()
   
@@ -966,7 +966,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         isOutlined,
         hasChildren: (childrenMap.get(n.id) || []).length > 0,
         childCount: (childrenMap.get(n.id) || []).length,
-        branchColor: nodeColors.get(n.id) || '#ec4899',
+        branchColor: globalLineColor || nodeColors.get(n.id) || '#ec4899',
         isRoot: !n.data.parent_id || !nodes.find(x => x.id === n.data.parent_id)
       }
     }))
@@ -974,7 +974,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     // 4. Process edges
     let finalEdges = edges.filter(e => e.id !== 'ghost-preview-edge').map(e => {
       const targetNode = finalNodes.find(n => n.id === e.target)
-      const color = targetNode ? (nodeColors.get(targetNode.id) || '#ec4899') : '#ec4899'
+      const color = globalLineColor || (targetNode ? (nodeColors.get(targetNode.id) || '#ec4899') : '#ec4899')
       const isLeft = (targetNode?.data as any)?.direction === 'left'
       return {
         ...e,
@@ -1025,7 +1025,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
 
     return { displayNodes: finalNodes, displayEdges: finalEdges }
-  }, [nodes, edges, isColorful, isOutlined])
+  }, [nodes, edges, isColorful, isOutlined, globalLineColor])
 
   const playingSlide = presentationMode === 'playing' && slides ? slides[currentSlideIndex] : null;
   
