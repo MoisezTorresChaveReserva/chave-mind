@@ -44,7 +44,7 @@ const generateId = () => {
 }
 
 function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, updatingSlideId, setUpdatingSlideId, isReadOnly }: any) {
-  const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, getIntersectingNodes } = useReactFlow()
+  const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, zoomTo } = useReactFlow()
   const { x: vpX, y: vpY, zoom: vpZoom } = useViewport()
   
   // Drag to select state
@@ -1143,8 +1143,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         snapGrid={[20, 20]}
         fitView
         fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.1}
-        maxZoom={3}
+        minZoom={0.2}
+        maxZoom={4}
         proOptions={{ hideAttribution: true }}
         colorMode={theme === 'dark' ? 'dark' : 'light'}
       >
@@ -1182,6 +1182,21 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
             height: `${drawBox.height}px`,
           }}
         />
+      )}
+      {/* Zoom Bar */}
+      {presentationMode !== 'playing' && (
+        <div className="absolute bottom-6 left-6 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2 flex items-center gap-3">
+           <span className="text-xs font-medium text-gray-500 w-10 text-right">{Math.round(vpZoom * 100)}%</span>
+           <input 
+              type="range" 
+              min={0.2} 
+              max={4} 
+              step={0.05} 
+              value={vpZoom} 
+              onChange={(e) => zoomTo(Number(e.target.value))}
+              className="w-24 md:w-32 accent-purple-500"
+           />
+        </div>
       )}
     </ReactFlow>
     </div>
