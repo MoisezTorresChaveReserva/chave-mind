@@ -334,7 +334,8 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
           text_color: n.data.text_color,
           image_url: n.data.image_url,
           icon: n.data.icon,
-          link_url: n.data.link_url
+          link_url: n.data.link_url,
+          tags: n.data.tags
         })
       }))
       
