@@ -51,6 +51,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
   const [isDrawing, setIsDrawing] = useState(false)
   const [startPoint, setStartPoint] = useState({ x: 0, y: 0 })
   const [currentPoint, setCurrentPoint] = useState({ x: 0, y: 0 })
+  const [exportingSlide, setExportingSlide] = useState<any>(null)
 
 
   // Map our DB types to React Flow types
@@ -186,6 +187,84 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     window.addEventListener('export-map', handleExport)
     return () => window.removeEventListener('export-map', handleExport)
   }, [getNodes, getEdges, mapId, theme])
+
+  useEffect(() => {
+    const handleExportPresentation = async (e: any) => {
+      const { presentation, format } = e.detail
+      const slidesList = presentation.slides || []
+      
+      if (slidesList.length === 0) {
+        alert('A apresentação não tem slides.')
+        return
+      }
+
+      setSaveStatus('saving')
+      
+      try {
+        let pptx: any = null
+        let pdf: any = null
+
+        if (format === 'pptx') {
+          const pptxgen = (await import('pptxgenjs')).default
+          pptx = new pptxgen()
+          pptx.layout = 'LAYOUT_16x9'
+        } else if (format === 'pdf') {
+          const { jsPDF } = await import('jspdf')
+          pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1920, 1080] })
+        }
+
+        const flowViewport = document.querySelector('.react-flow__viewport') as HTMLElement
+        if (!flowViewport) return
+
+        const originalZoom = vpZoom
+
+        for (let i = 0; i < slidesList.length; i++) {
+          const slide = slidesList[i]
+          
+          setExportingSlide(slide)
+          fitBounds(slide.bounds, { padding: 0, duration: 0 })
+          
+          // Wait for DOM to catch up and React state to re-render nodes
+          await new Promise(r => setTimeout(r, 1000))
+
+          const dataUrl = await toJpeg(flowViewport, {
+            backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
+            quality: 0.9,
+            pixelRatio: 1.5,
+            width: 1920,
+            height: 1080
+          })
+
+          if (format === 'pptx') {
+            const pptxSlide = pptx.addSlide()
+            pptxSlide.addImage({ data: dataUrl, x: 0, y: 0, w: '100%', h: '100%' })
+          } else if (format === 'pdf') {
+            if (i > 0) pdf.addPage([1920, 1080], 'landscape')
+            pdf.addImage(dataUrl, 'JPEG', 0, 0, 1920, 1080)
+          }
+        }
+
+        setExportingSlide(null)
+        zoomTo(originalZoom, { duration: 500 })
+        fitView({ duration: 500 })
+
+        if (format === 'pptx') {
+          await pptx.writeFile({ fileName: `${presentation.name}.pptx` })
+        } else if (format === 'pdf') {
+          pdf.save(`${presentation.name}.pdf`)
+        }
+      } catch (err) {
+        console.error('Failed to export presentation', err)
+        alert('Erro ao exportar a apresentação.')
+        setExportingSlide(null)
+      } finally {
+        setSaveStatus('saved')
+      }
+    }
+
+    window.addEventListener('export-presentation', handleExportPresentation)
+    return () => window.removeEventListener('export-presentation', handleExportPresentation)
+  }, [fitBounds, zoomTo, fitView, theme, vpZoom, setSaveStatus])
 
   // Symmetric Tree Auto-Layout
   const applyAutoLayout = useCallback((nodesList: Node[]) => {
@@ -947,7 +1026,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       if (isVisible) visibleNodeIds.add(nodeId)
       
       const node = nodes.find(n => n.id === nodeId)
-      const isCollapsed = node?.data.collapsed
+      const slide = exportingSlide || (presentationMode === 'playing' ? slides?.[currentSlideIndex] : null)
+      const isCollapsed = slide && slide.collapsedNodes ? slide.collapsedNodes.includes(nodeId) : node?.data.collapsed
       
       const children = childrenMap.get(nodeId) || []
       children.forEach(childId => {
@@ -1025,9 +1105,9 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
 
     return { displayNodes: finalNodes, displayEdges: finalEdges }
-  }, [nodes, edges, isColorful, isOutlined, globalLineColor])
+  }, [nodes, edges, isColorful, isOutlined, globalLineColor, exportingSlide, presentationMode, currentSlideIndex, slides])
 
-  const playingSlide = presentationMode === 'playing' && slides ? slides[currentSlideIndex] : null;
+  const playingSlide = exportingSlide || (presentationMode === 'playing' && slides ? slides[currentSlideIndex] : null)
   
   const finalDisplayNodes = useMemo(() => {
      if (!playingSlide) return displayNodes;
