@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react'
 import { Plus, Wand2, Type, Trash2, Palette, Image as ImageIcon, Link, Link2, Smile, X, Tag as TagIcon, Check } from 'lucide-react'
 import { useMapStore } from '@/store/mapStore'
+import { supabase } from '@/supabase/client'
 
 const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
@@ -251,9 +252,11 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                   return (
                     <button 
                       key={tag.id}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const isActive = nodeTagsIds.includes(tag.id)
                         const newIds = isActive ? nodeTagsIds.filter(id => id !== tag.id) : [...nodeTagsIds, tag.id]
-                        updateFormatting({ tags: newIds })
+                        updateFormatting({ tags: newIds }) // Handled by saveToDb in Canvas.tsx
                       }}
                       className="flex items-center gap-2 text-xs p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                     >
@@ -280,24 +283,42 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                     placeholder="Nome"
                     value={newTagText}
                     onChange={e => setNewTagText(e.target.value)}
-                    onKeyDown={(e) => {
+                    onKeyDown={async (e) => {
                       if (e.key === 'Enter' && newTagText.trim()) {
-                        const newTag = { id: generateId(), text: newTagText.trim(), color: newTagColor }
-                        addMapTag(newTag)
-                        updateFormatting({ tags: [...nodeTagsIds, newTag.id] })
+                        const mapId = data.mapId as string
+                        const tempId = generateId()
+                        const newTag = { id: tempId, text: newTagText.trim(), color: newTagColor }
+                        addMapTag(newTag) // Optimistic
+                        updateFormatting({ tags: [...nodeTagsIds, tempId] })
                         setNewTagText('')
+                        
+                        const { data: inserted } = await supabase.from('map_tags').insert({ map_id: mapId, text: newTag.text, color: newTag.color }).select().single()
+                        if (inserted) {
+                           useMapStore.getState().setMapTags([...useMapStore.getState().mapTags.filter(t => t.id !== tempId), inserted])
+                           updateFormatting({ tags: [...nodeTagsIds.filter(id => id !== tempId), inserted.id] })
+                        }
                       }
                     }}
                     className="flex-1 text-xs p-1 border rounded"
                   />
                 </div>
                 <button 
-                  onClick={() => {
+                  onClick={async () => {
                     if (newTagText.trim()) {
-                      const newTag = { id: generateId(), text: newTagText.trim(), color: newTagColor }
-                      addMapTag(newTag)
-                      updateFormatting({ tags: [...nodeTagsIds, newTag.id] })
+                      const mapId = data.mapId as string
+                      const tempId = generateId()
+                      const newTag = { id: tempId, text: newTagText.trim(), color: newTagColor }
+                      addMapTag(newTag) // Optimistic
+                      updateFormatting({ tags: [...nodeTagsIds, tempId] })
                       setNewTagText('')
+                      
+                      const { data: inserted } = await supabase.from('map_tags').insert({ map_id: mapId, text: newTag.text, color: newTag.color }).select().single()
+                      if (inserted) {
+                         // Update store with real ID
+                         useMapStore.getState().setMapTags(useMapStore.getState().mapTags.map(t => t.id === tempId ? inserted : t))
+                         updateFormatting({ tags: [...nodeTagsIds, inserted.id] })
+                         await supabase.from('node_tags').insert({ node_id: id, tag_id: inserted.id })
+                      }
                     }
                   }}
                   disabled={!newTagText.trim()}
@@ -337,22 +358,24 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         onDoubleClick={onDoubleClick}
         onContextMenu={onContextMenu}
       >
-        {!isRoot && (
-          <Handle
-            type="target"
-            id={data.direction === 'left' ? 'right' : 'left'}
-            position={data.direction === 'left' ? Position.Right : Position.Left}
-            className={`opacity-0 ${data.direction === 'left' ? '!-mr-[7px]' : '!-ml-[7px]'}`}
-            style={{ borderColor: branchColor }}
-          />
-        )}
-
         {!!data.image_url && (
           <img src={data.image_url as string} alt="Node media" className="max-w-[120px] max-h-[80px] object-contain rounded mb-1 border border-gray-100 dark:border-gray-800" />
         )}
 
-        <div className="flex flex-col">
-          <div className="flex items-center gap-1.5">
+        <div className="flex flex-col w-full relative">
+          {/* Main Content Row (Text + Handles) */}
+          <div className="relative flex items-center justify-center w-full min-h-[28px]">
+            {!isRoot && (
+              <Handle
+                type="target"
+                id={data.direction === 'left' ? 'right' : 'left'}
+                position={data.direction === 'left' ? Position.Right : Position.Left}
+                className={`opacity-0 ${data.direction === 'left' ? '!-mr-[7px]' : '!-ml-[7px]'}`}
+                style={{ borderColor: branchColor, top: '50%' }}
+              />
+            )}
+
+            <div className="flex items-center gap-1.5 z-10 px-1">
             {!!data.icon && <span className="text-lg">{data.icon as string}</span>}
 
             {isEditing ? (
@@ -383,8 +406,66 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             )}
           </div>
           
+            {/* Toggle Collapse Button & Connector */}
+            {!!data.hasChildren && (
+              <>
+                <div
+                  className={`absolute top-1/2 -translate-y-1/2 z-0 ${data.direction === 'left' ? '' : ''}`}
+                  style={{
+                    [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-12px' : '-8px',
+                    width: data.childCount === 1 ? '12px' : '8px',
+                    height: '3px',
+                    backgroundColor: branchColor
+                  }}
+                />
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
+                  className="absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
+                  style={{
+                    [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-28px' : '-16px',
+                    borderColor: branchColor
+                  }}
+                  title={data.collapsed ? "Expandir" : "Recolher"}
+                >
+                  {!!data.collapsed && <div className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: branchColor }} />}
+                </button>
+              </>
+            )}
+
+            {isRoot ? (
+              <>
+                <Handle
+                  type="source"
+                  position={Position.Right}
+                  id="right"
+                  className="opacity-0"
+                  style={{ right: '0px', top: '50%' }}
+                  isConnectable={false}
+                />
+                <Handle
+                  type="source"
+                  position={Position.Left}
+                  id="left"
+                  className="opacity-0"
+                  style={{ left: '0px', top: '50%' }}
+                  isConnectable={false}
+                />
+              </>
+            ) : (
+              <Handle
+                type="source"
+                id={data.direction === 'left' ? 'left' : 'right'}
+                position={data.direction === 'left' ? Position.Left : Position.Right}
+                className="opacity-0"
+                style={{ [data.direction === 'left' ? 'left' : 'right']: data.hasChildren ? (data.childCount === 1 ? '-28px' : '-16px') : '0px', top: '50%' }}
+                isConnectable={false}
+              />
+            )}
+          </div>
+
+          {/* Tags */}
           {nodeTags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
+            <div className="flex flex-wrap gap-1 mt-1 justify-center relative z-10 w-full px-1">
               {nodeTags.map(tag => (
                 <span 
                   key={tag.id} 
@@ -397,62 +478,6 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             </div>
           )}
         </div>
-
-        {/* Toggle Collapse Button & Connector */}
-        {!!data.hasChildren && (
-          <>
-            <div
-              className={`absolute top-1/2 -translate-y-1/2 z-0 ${data.direction === 'left' ? '' : ''}`}
-              style={{
-                [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-12px' : '-8px',
-                width: data.childCount === 1 ? '12px' : '8px',
-                height: '3px',
-                backgroundColor: branchColor
-              }}
-            />
-            <button
-              onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
-              className="absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
-              style={{
-                [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-28px' : '-16px',
-                borderColor: branchColor
-              }}
-              title={data.collapsed ? "Expandir" : "Recolher"}
-            >
-              {!!data.collapsed && <div className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: branchColor }} />}
-            </button>
-          </>
-        )}
-
-        {isRoot ? (
-          <>
-            <Handle
-              type="source"
-              position={Position.Right}
-              id="right"
-              className="opacity-0"
-              style={{ right: '0px' }}
-              isConnectable={false}
-            />
-            <Handle
-              type="source"
-              position={Position.Left}
-              id="left"
-              className="opacity-0"
-              style={{ left: '0px' }}
-              isConnectable={false}
-            />
-          </>
-        ) : (
-          <Handle
-            type="source"
-            id={data.direction === 'left' ? 'left' : 'right'}
-            position={data.direction === 'left' ? Position.Left : Position.Right}
-            className="opacity-0"
-            style={{ [data.direction === 'left' ? 'left' : 'right']: data.hasChildren ? (data.childCount === 1 ? '-28px' : '-16px') : '0px' }}
-            isConnectable={false}
-          />
-        )}
 
         {/* Add Child Button */}
         {selected && !isReadOnly && (

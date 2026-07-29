@@ -27,6 +27,17 @@ export default async function MapPage(props: { params: Promise<{ id: string }> }
 
   const { data: nodes } = await supabase.from('nodes').select('*').eq('map_id', params.id)
   const { data: edges } = await supabase.from('edges').select('*').eq('map_id', params.id)
+  const { data: mapTags } = await supabase.from('map_tags').select('*').eq('map_id', params.id)
+  
+  // Since we can't easily JOIN in supabase-js simple select for all nodes in map, we fetch node_tags for these nodes
+  // But wait, we can just fetch all node_tags for the map if we had map_id in node_tags, but we don't.
+  // We can fetch by node_id in array
+  let nodeTags: any[] = []
+  if (nodes && nodes.length > 0) {
+    const nodeIds = nodes.map(n => n.id)
+    const { data: nt } = await supabase.from('node_tags').select('*').in('node_id', nodeIds)
+    nodeTags = nt || []
+  }
 
   let role = 'reader'
   if (map.user_id === user.id) {
@@ -46,5 +57,5 @@ export default async function MapPage(props: { params: Promise<{ id: string }> }
 
   const isReadOnly = role === 'reader'
 
-  return <Editor map={map} initialNodes={nodes || []} initialEdges={edges || []} user={user} isReadOnly={isReadOnly} />
+  return <Editor map={map} initialNodes={nodes || []} initialEdges={edges || []} initialMapTags={mapTags || []} initialNodeTags={nodeTags || []} user={user} isReadOnly={isReadOnly} />
 }

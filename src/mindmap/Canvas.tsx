@@ -42,7 +42,7 @@ const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
 }
 
-function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, isReadOnly }: any) {
+function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, isReadOnly }: any) {
   const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, getIntersectingNodes } = useReactFlow()
   const { x: vpX, y: vpY, zoom: vpZoom } = useViewport()
   
@@ -69,6 +69,9 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       try { visualData = JSON.parse(n.color) } 
       catch (e) { visualData = { bg_color: n.color } } // fallback for old data
     }
+    // Find tags for this node
+    const nodeTagsIds = initialNodeTags.filter((nt: any) => nt.node_id === n.id).map((nt: any) => nt.tag_id)
+
     return {
       id: n.id,
       type: 'custom',
@@ -77,6 +80,9 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         label: n.text, 
         parent_id: n.parent_id, 
         collapsed: n.collapsed,
+        mapId: mapId,
+        isReadOnly: isReadOnly,
+        tags: nodeTagsIds,
         ...visualData
       }
     }
@@ -325,8 +331,8 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         id: n.id,
         map_id: mapId,
         text: n.data.label as string,
-        x: n.position.x,
-        y: n.position.y,
+        position_x: n.position.x,
+        position_y: n.position.y,
         parent_id: n.data.parent_id || null,
         collapsed: n.data.collapsed as boolean || false,
         color: JSON.stringify({
@@ -334,12 +340,9 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
           text_color: n.data.text_color,
           image_url: n.data.image_url,
           icon: n.data.icon,
-          link_url: n.data.link_url,
-          tags: n.data.tags
+          link_url: n.data.link_url
         })
       }))
-      
-      console.log("DEBUG saveToDb nodes:", dbNodes.map(n => ({ id: n.id, color: n.color })))
       
       const dbEdges = currentEdges.map(e => ({
         id: e.id,
@@ -349,23 +352,48 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         color: e.style?.stroke || '#ec4899'
       }))
       
-      await supabase.from('nodes').upsert(dbNodes)
-      await supabase.from('edges').upsert(dbEdges)
-      
-      // Sync deletions (orphans)
-      const { data: existingNodes } = await supabase.from('nodes').select('id').eq('map_id', mapId)
-      const { data: existingEdges } = await supabase.from('edges').select('id').eq('map_id', mapId)
+      const { error } = await supabase.from('nodes').upsert(dbNodes)
+      const { error: edgesError } = await supabase.from('edges').upsert(dbEdges)
 
-      if (existingNodes) {
-        const currentNodesIds = new Set(dbNodes.map(n => n.id))
-        const orphanNodeIds = existingNodes.filter(n => !currentNodesIds.has(n.id)).map(n => n.id)
-        if (orphanNodeIds.length > 0) await supabase.from('nodes').delete().in('id', orphanNodeIds)
-      }
+      if (error || edgesError) {
+        setSaveStatus('error')
+        console.error('Save error', error || edgesError)
+      } else {
+        // Sync node_tags
+        const nodeIds = dbNodes.map(n => n.id)
+        if (nodeIds.length > 0) {
+          // Clean existing tags for these nodes
+          await supabase.from('node_tags').delete().in('node_id', nodeIds)
+          
+          // Insert current tags
+          const tagsToInsert: any[] = []
+          currentNodes.forEach(n => {
+            const tags = (n.data.tags as string[]) || []
+            tags.forEach(tId => {
+              tagsToInsert.push({ node_id: n.id, tag_id: tId })
+            })
+          })
+          
+          if (tagsToInsert.length > 0) {
+            await supabase.from('node_tags').insert(tagsToInsert)
+          }
+        }
+        
+        // Sync deletions (orphans)
+        const { data: existingNodes } = await supabase.from('nodes').select('id').eq('map_id', mapId)
+        const { data: existingEdges } = await supabase.from('edges').select('id').eq('map_id', mapId)
 
-      if (existingEdges) {
-        const currentEdgesIds = new Set(dbEdges.map(e => e.id))
-        const orphanEdgeIds = existingEdges.filter(e => !currentEdgesIds.has(e.id)).map(e => e.id)
-        if (orphanEdgeIds.length > 0) await supabase.from('edges').delete().in('id', orphanEdgeIds)
+        if (existingNodes) {
+          const currentNodesIds = new Set(dbNodes.map(n => n.id))
+          const orphanNodeIds = existingNodes.filter(n => !currentNodesIds.has(n.id)).map(n => n.id)
+          if (orphanNodeIds.length > 0) await supabase.from('nodes').delete().in('id', orphanNodeIds)
+        }
+
+        if (existingEdges) {
+          const currentEdgesIds = new Set(dbEdges.map(e => e.id))
+          const orphanEdgeIds = existingEdges.filter(e => !currentEdgesIds.has(e.id)).map(e => e.id)
+          if (orphanEdgeIds.length > 0) await supabase.from('edges').delete().in('id', orphanEdgeIds)
+        }
       }
       
       // Capture thumbnail if it has been more than 10 seconds since last capture
