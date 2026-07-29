@@ -55,13 +55,25 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
   // Presentation Player Engine
   useEffect(() => {
     if (presentationMode === 'playing' && slides && slides[currentSlideIndex]) {
-      const { x, y, width, height } = slides[currentSlideIndex].bounds
+      const slide = slides[currentSlideIndex]
+      const { x, y, width, height } = slide.bounds
       fitBounds({ x, y, width, height }, { duration: 800, padding: 0.1 })
+      
+      if (slide.collapsedNodes) {
+        const collapsedSet = new Set(slide.collapsedNodes)
+        setNodes((nds: Node[]) => applyAutoLayout(nds.map(n => ({
+          ...n,
+          data: {
+            ...n.data,
+            collapsed: collapsedSet.has(n.id)
+          }
+        }))))
+      }
     } else if (presentationMode === 'edit') {
       // Return to full view when exiting playing
       fitView({ duration: 800, padding: 0.2 })
     }
-  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView])
+  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes, applyAutoLayout])
   
   // Map our DB types to React Flow types
   const defaultNodes: Node[] = initialNodes.length > 0 ? initialNodes.map((n: any) => {
@@ -1067,7 +1079,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       
       if (setSlides) {
         if (updatingSlideId) {
-          setSlides((prev: any) => prev.map((s: any) => s.id === updatingSlideId ? { ...s, bounds } : s))
+          const collapsedNodes = nodes.filter(n => n.data?.collapsed).map(n => n.id)
+          setSlides((prev: any) => prev.map((s: any) => s.id === updatingSlideId ? { ...s, bounds, collapsedNodes } : s))
           if (setUpdatingSlideId) setUpdatingSlideId(null)
           if (setIsCapturingMode) setIsCapturingMode(false)
         } else {
@@ -1092,10 +1105,12 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
             console.error('Failed to auto-name slide', e)
           }
 
+          const collapsedNodes = nodes.filter(n => n.data?.collapsed).map(n => n.id)
           const newSlide = {
             id: generateId(),
             name: autoName.trim() || undefined,
-            bounds
+            bounds,
+            collapsedNodes
           }
           setSlides((prev: any) => [...prev, newSlide])
           // We DO NOT set isCapturingMode to false here, allowing continuous capture

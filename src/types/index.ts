@@ -2,6 +2,7 @@ export type Slide = {
   id: string
   name?: string
   bounds: { x: number; y: number; width: number; height: number }
+  collapsedNodes?: string[]
 }
 
 export type MapPresentation = {
