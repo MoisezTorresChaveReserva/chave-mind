@@ -487,7 +487,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       }
 
       // Update nodes
-      setNodes((prev: Node[]) => prev.map(n => {
+      setNodes((prev: Node[]) => applyAutoLayout(prev.map(n => {
          const nodeDepth = depthMap.has(n.id) ? depthMap.get(n.id)! : 0
          if (level === 5) {
             return { ...n, data: { ...n.data, collapsed: false } }
@@ -495,12 +495,12 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
             const shouldCollapse = nodeDepth >= level
             return { ...n, data: { ...n.data, collapsed: shouldCollapse } }
          }
-      }))
+      })))
     }
     
     window.addEventListener('set-depth-level', handleSetDepthLevel)
     return () => window.removeEventListener('set-depth-level', handleSetDepthLevel)
-  }, [getNodes, getEdges, setNodes, isReadOnly])
+  }, [getNodes, getEdges, setNodes, isReadOnly, applyAutoLayout])
 
   // Callbacks for Node Label updates
   const onNodeLabelChange = useCallback((id: string, newLabel: string) => {
