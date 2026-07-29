@@ -339,6 +339,8 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         })
       }))
       
+      console.log("DEBUG saveToDb nodes:", dbNodes.map(n => ({ id: n.id, color: n.color })))
+      
       const dbEdges = currentEdges.map(e => ({
         id: e.id,
         map_id: mapId,
@@ -402,6 +404,16 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
       if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [nodes, edges, saveToDb])
+
+  useEffect(() => {
+    const handleForceSave = () => saveToDb(getNodes(), getEdges())
+    window.addEventListener('force-save', handleForceSave)
+    window.addEventListener('beforeunload', handleForceSave)
+    return () => {
+      window.removeEventListener('force-save', handleForceSave)
+      window.removeEventListener('beforeunload', handleForceSave)
+    }
+  }, [saveToDb, getNodes, getEdges])
 
   // Callbacks for Node Label updates
   const onNodeLabelChange = useCallback((id: string, newLabel: string) => {

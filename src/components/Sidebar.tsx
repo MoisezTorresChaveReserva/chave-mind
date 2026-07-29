@@ -14,7 +14,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsO
   return (
     <div className="w-64 h-full bg-gray-50 border-r border-[var(--border)] flex flex-col transition-all flex-shrink-0 relative z-20 shadow-sm">
       <div className="h-14 flex items-center justify-between px-4">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push('/')}>
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => { window.dispatchEvent(new CustomEvent('force-save')); setTimeout(() => router.push('/'), 100) }}>
           <div className="w-6 h-6 rounded bg-[#2563EB] text-white flex items-center justify-center font-bold text-xs">M</div>
           <span className="font-semibold text-sm">MindMap Pro</span>
         </div>
@@ -26,7 +26,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsO
       <div className="flex-1 overflow-y-auto py-4">
         <div className="px-2 mb-6">
           <h3 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-2 mb-2">Mapas</h3>
-          <button onClick={() => router.push('/')} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-200 text-sm text-gray-700">
+          <button onClick={() => { window.dispatchEvent(new CustomEvent('force-save')); setTimeout(() => router.push('/'), 100) }} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-200 text-sm text-gray-700">
             <Map size={16} className="text-gray-400" />
             Dashboard
           </button>

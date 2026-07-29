@@ -140,7 +140,8 @@ export default function Editor({ map, initialNodes, initialEdges, user, isReadOn
                     console.error('Failed to capture thumbnail', e)
                   }
                 }
-                router.push('/')
+                window.dispatchEvent(new CustomEvent('force-save'))
+                setTimeout(() => router.push('/'), 100)
               }} 
               className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
               title="Voltar"

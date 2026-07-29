@@ -2,6 +2,9 @@ import { createClient } from '@/supabase/server'
 import { redirect } from 'next/navigation'
 import Editor from '@/components/Editor'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function MapPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   
