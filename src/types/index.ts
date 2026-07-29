@@ -3,6 +3,12 @@ export type Slide = {
   bounds: { x: number; y: number; width: number; height: number }
 }
 
+export type Tag = {
+  id: string
+  text: string
+  color: string
+}
+
 export type MindMap = {
   id: string
   user_id: string

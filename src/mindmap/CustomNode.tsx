@@ -1,7 +1,8 @@
 import React, { memo, useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react'
-import { Plus, Wand2, Type, Trash2, Palette, Image as ImageIcon, Link, Link2, Smile, X } from 'lucide-react'
+import { Plus, Wand2, Type, Trash2, Palette, Image as ImageIcon, Link, Link2, Smile, X, Tag as TagIcon, Check } from 'lucide-react'
+import { useMapStore } from '@/store/mapStore'
 
 const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
@@ -19,10 +20,17 @@ const pastelColors = [
 const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }: NodeProps) => {
   const [isEditing, setIsEditing] = useState(!!data.isNew)
   const [text, setText] = useState(data.label as string || '')
-  const [activeMenu, setActiveMenu] = useState<'none' | 'color' | 'image' | 'link' | 'icon'>('none')
+  const [activeMenu, setActiveMenu] = useState<'none' | 'color' | 'image' | 'link' | 'icon' | 'tag'>('none')
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null)
   const [tempUrl, setTempUrl] = useState('')
+  const [newTagText, setNewTagText] = useState('')
+  const [newTagColor, setNewTagColor] = useState('#ec4899')
   const inputRef = useRef<HTMLInputElement>(null)
+  
+  const { mapTags, addMapTag } = useMapStore()
+  
+  const nodeTagsIds = (data.tags as string[]) || []
+  const nodeTags = mapTags.filter(t => nodeTagsIds.includes(t.id))
   const { setNodes, setEdges } = useReactFlow()
 
   const handleClickOutside = () => {
@@ -229,8 +237,81 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             </div>
           )}
 
+          {activeMenu === 'tag' && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-3 w-56 max-h-64 overflow-y-auto">
+              <div className="text-xs font-semibold text-gray-500 flex justify-between sticky top-0 bg-white dark:bg-gray-800 z-10">
+                <span>Etiquetas</span>
+                <button onClick={() => setActiveMenu('none')}><X size={14} /></button>
+              </div>
+              
+              <div className="flex flex-col gap-1">
+                {mapTags.length === 0 && <span className="text-xs text-gray-400 italic">Nenhuma etiqueta criada</span>}
+                {mapTags.map(tag => {
+                  const isActive = nodeTagsIds.includes(tag.id)
+                  return (
+                    <button 
+                      key={tag.id}
+                      onClick={() => {
+                        const newIds = isActive ? nodeTagsIds.filter(id => id !== tag.id) : [...nodeTagsIds, tag.id]
+                        updateFormatting({ tags: newIds })
+                      }}
+                      className="flex items-center gap-2 text-xs p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                    >
+                      <div className={`w-3 h-3 rounded-full flex items-center justify-center`} style={{ backgroundColor: tag.color }}>
+                        {isActive && <Check size={8} color="#fff" />}
+                      </div>
+                      <span className="truncate">{tag.text}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-2 flex flex-col gap-2">
+                <span className="text-[10px] text-gray-500 uppercase font-semibold">Nova Etiqueta</span>
+                <div className="flex items-center gap-1">
+                  <input 
+                    type="color" 
+                    value={newTagColor} 
+                    onChange={e => setNewTagColor(e.target.value)}
+                    className="w-6 h-6 rounded cursor-pointer border-0 p-0" 
+                  />
+                  <input 
+                    type="text" 
+                    placeholder="Nome"
+                    value={newTagText}
+                    onChange={e => setNewTagText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newTagText.trim()) {
+                        const newTag = { id: generateId(), text: newTagText.trim(), color: newTagColor }
+                        addMapTag(newTag)
+                        updateFormatting({ tags: [...nodeTagsIds, newTag.id] })
+                        setNewTagText('')
+                      }
+                    }}
+                    className="flex-1 text-xs p-1 border rounded"
+                  />
+                </div>
+                <button 
+                  onClick={() => {
+                    if (newTagText.trim()) {
+                      const newTag = { id: generateId(), text: newTagText.trim(), color: newTagColor }
+                      addMapTag(newTag)
+                      updateFormatting({ tags: [...nodeTagsIds, newTag.id] })
+                      setNewTagText('')
+                    }
+                  }}
+                  disabled={!newTagText.trim()}
+                  className="text-xs bg-blue-500 text-white rounded py-1 disabled:opacity-50"
+                >
+                  Criar e Adicionar
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-1.5">
             <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'color' ? 'none' : 'color') }} className="p-1.5 text-pink-500 hover:bg-pink-50 dark:hover:bg-pink-900/30 rounded-md transition-colors" title="Cores"><Palette size={16} /></button>
+            <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'tag' ? 'none' : 'tag') }} className="p-1.5 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-md transition-colors" title="Etiquetas"><TagIcon size={16} /></button>
             <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'image' ? 'none' : 'image'); setTempUrl(data.image_url as string || '') }} className="p-1.5 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-md transition-colors" title="Imagem"><ImageIcon size={16} /></button>
             <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'link' ? 'none' : 'link'); setTempUrl(data.link_url as string || '') }} className="p-1.5 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-md transition-colors" title="Link"><Link size={16} /></button>
             <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'icon' ? 'none' : 'icon') }} className="p-1.5 text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-md transition-colors" title="Ícone"><Smile size={16} /></button>
@@ -270,34 +351,50 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           <img src={data.image_url as string} alt="Node media" className="max-w-[120px] max-h-[80px] object-contain rounded mb-1 border border-gray-100 dark:border-gray-800" />
         )}
 
-        <div className="flex items-center gap-1.5">
-          {!!data.icon && <span className="text-lg">{data.icon as string}</span>}
+        <div className="flex flex-col">
+          <div className="flex items-center gap-1.5">
+            {!!data.icon && <span className="text-lg">{data.icon as string}</span>}
 
-          {isEditing ? (
-            <input
-              ref={inputRef}
-              value={text}
-              autoFocus
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={onKeyDown}
-              onBlur={onBlur}
-              onMouseDown={(e) => e.stopPropagation()}
-              onDoubleClick={(e) => e.stopPropagation()}
-              className={`nodrag nopan outline-none bg-transparent text-left w-full min-w-[80px] ${isRoot
-                ? 'text-[42px] font-bold tracking-tight text-slate-800'
-                : 'text-[18px] font-normal'}`}
-              style={{ color: customText || 'inherit' }}
-            />
-          ) : (
-            <span className={`select-none text-left ${customText ? '' : 'text-gray-800 dark:text-gray-100'} ${isRoot ? 'font-medium text-xl uppercase' : 'font-normal text-[16px]'}`} style={{ color: customText || 'inherit' }}>
-              {text || 'Novo Nó'}
-            </span>
-          )}
+            {isEditing ? (
+              <input
+                ref={inputRef}
+                value={text}
+                autoFocus
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={onKeyDown}
+                onBlur={onBlur}
+                onMouseDown={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+                className={`nodrag nopan outline-none bg-transparent text-left w-full min-w-[80px] ${isRoot
+                  ? 'text-[42px] font-bold tracking-tight text-slate-800'
+                  : 'text-[18px] font-normal'}`}
+                style={{ color: customText || 'inherit' }}
+              />
+            ) : (
+              <span className={`select-none text-left ${customText ? '' : 'text-gray-800 dark:text-gray-100'} ${isRoot ? 'font-medium text-xl uppercase' : 'font-normal text-[16px]'}`} style={{ color: customText || 'inherit' }}>
+                {text || 'Novo Nó'}
+              </span>
+            )}
 
-          {!!data.link_url && (
-            <a href={data.link_url as string} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline flex items-center justify-center gap-1 mt-1">
-              <Link2 size={10} /> Link Externo
-            </a>
+            {!!data.link_url && (
+              <a href={data.link_url as string} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline flex items-center justify-center gap-1 mt-1">
+                <Link2 size={10} /> Link Externo
+              </a>
+            )}
+          </div>
+          
+          {nodeTags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {nodeTags.map(tag => (
+                <span 
+                  key={tag.id} 
+                  className="px-1.5 py-0.5 rounded text-[10px] font-semibold text-white whitespace-nowrap"
+                  style={{ backgroundColor: tag.color }}
+                >
+                  {tag.text}
+                </span>
+              ))}
+            </div>
           )}
         </div>
 

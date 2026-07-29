@@ -9,6 +9,7 @@ import Sidebar from '@/components/Sidebar'
 import ShareModal from '@/components/ShareModal'
 import { supabase } from '@/supabase/client'
 import { toJpeg } from 'html-to-image'
+import { useMapStore } from '@/store/mapStore'
 
 export default function Editor({ map, initialNodes, initialEdges, user, isReadOnly = false }: { map: MindMap, initialNodes: MapNode[], initialEdges: MapEdge[], user: any, isReadOnly?: boolean }) {
   const router = useRouter()
@@ -23,6 +24,9 @@ export default function Editor({ map, initialNodes, initialEdges, user, isReadOn
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
   const [isCapturingMode, setIsCapturingMode] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  
+  // Zustand Store
+  const { mapTags, setMapTags } = useMapStore()
   
   // Title State
   const [mapTitle, setMapTitle] = useState(map.title)
@@ -39,22 +43,25 @@ export default function Editor({ map, initialNodes, initialEdges, user, isReadOn
     }
   }
 
-  // Parse existing slides on mount
+  // Parse existing slides and tags on mount
   useEffect(() => {
     if (map.thumbnail) {
       try {
         const parsed = JSON.parse(map.thumbnail)
         if (Array.isArray(parsed)) setSlides(parsed)
-        else if (parsed.slides) setSlides(parsed.slides)
+        else {
+          if (parsed.slides) setSlides(parsed.slides)
+          if (parsed.mapTags) setMapTags(parsed.mapTags)
+        }
       } catch (e) {
-        console.error("Failed to parse slides", e)
+        console.error("Failed to parse thumbnail json", e)
       }
     }
-  }, [map.thumbnail])
+  }, [map.thumbnail, setMapTags])
 
-  // Save slides when they change
+  // Save slides and tags when they change
   useEffect(() => {
-    if (slides.length > 0 || map.thumbnail) { // Avoid saving empty if never had slides
+    if (slides.length > 0 || mapTags.length > 0 || map.thumbnail) { // Avoid saving empty if never had anything
       let preview = null
       if (map.thumbnail) {
         try {
@@ -62,9 +69,9 @@ export default function Editor({ map, initialNodes, initialEdges, user, isReadOn
           if (!Array.isArray(parsed) && parsed.preview) preview = parsed.preview
         } catch(e) {}
       }
-      supabase.from('mind_maps').update({ thumbnail: JSON.stringify({ slides, preview }) }).eq('id', map.id).then()
+      supabase.from('mind_maps').update({ thumbnail: JSON.stringify({ slides, preview, mapTags }) }).eq('id', map.id).then()
     }
-  }, [slides, map.id])
+  }, [slides, mapTags, map.id])
 
   const startPlaying = () => {
     if (slides.length === 0) return alert('Adicione pelo menos um slide antes de apresentar!')
@@ -128,7 +135,7 @@ export default function Editor({ map, initialNodes, initialEdges, user, isReadOn
                       pixelRatio: 0.5
                     })
                     let preview = dataUrl
-                    supabase.from('mind_maps').update({ thumbnail: JSON.stringify({ slides, preview }) }).eq('id', map.id).then()
+                    supabase.from('mind_maps').update({ thumbnail: JSON.stringify({ slides, preview, mapTags }) }).eq('id', map.id).then()
                   } catch (e) {
                     console.error('Failed to capture thumbnail', e)
                   }

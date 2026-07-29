@@ -19,6 +19,7 @@ import {
 import { toJpeg, toPng, toSvg } from 'html-to-image'
 import CustomNode from './CustomNode'
 import { supabase } from '@/supabase/client'
+import { useMapStore } from '@/store/mapStore'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -374,8 +375,9 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
             quality: 0.1,
             pixelRatio: 0.5
           }).then(dataUrl => {
+            const { mapTags } = useMapStore.getState()
             supabase.from('mind_maps').update({ 
-              thumbnail: JSON.stringify({ slides: slides || [], preview: dataUrl }) 
+              thumbnail: JSON.stringify({ slides: slides || [], preview: dataUrl, mapTags }) 
             }).eq('id', mapId).then()
           }).catch(console.error)
         }
