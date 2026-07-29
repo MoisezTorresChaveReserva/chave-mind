@@ -224,7 +224,6 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
                   </div>
                   <p className="text-sm font-medium text-gray-900 truncate w-full text-center">{user.email}</p>
                 </div>
-                <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleAvatarUpload} />
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors border-b border-gray-100"
@@ -239,6 +238,7 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
                 </button>
               </div>
             )}
+            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleAvatarUpload} />
           </div>
         </div>
       </header>

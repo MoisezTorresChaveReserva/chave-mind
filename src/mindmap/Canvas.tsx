@@ -16,7 +16,7 @@ import {
   MarkerType,
   BackgroundVariant
 } from '@xyflow/react'
-import { toPng, toSvg } from 'html-to-image'
+import { toJpeg, toPng, toSvg } from 'html-to-image'
 import CustomNode from './CustomNode'
 import { supabase } from '@/supabase/client'
 
@@ -115,6 +115,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges)
   
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const lastThumbnailCapture = useRef(0)
 
   // History state for Undo/Redo
   const [past, setPast] = useState<{nodes: Node[], edges: Edge[]}[]>([])
@@ -312,6 +313,7 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
 
   // Auto-save logic
   const saveToDb = useCallback(async (currentNodes: Node[], currentEdges: Edge[]) => {
+    if (isReadOnly) return
     setSaveStatus('saving')
     
     // We only save to DB if mapId exists
@@ -361,13 +363,30 @@ function Flow({ mapId, initialNodes, initialEdges, setSaveStatus, isColorful, th
         const orphanEdgeIds = existingEdges.filter(e => !currentEdgesIds.has(e.id)).map(e => e.id)
         if (orphanEdgeIds.length > 0) await supabase.from('edges').delete().in('id', orphanEdgeIds)
       }
+      
+      // Capture thumbnail if it has been more than 10 seconds since last capture
+      if (Date.now() - lastThumbnailCapture.current > 10000) {
+        lastThumbnailCapture.current = Date.now()
+        const flowViewport = document.querySelector('.react-flow__viewport') as HTMLElement
+        if (flowViewport) {
+          toJpeg(flowViewport, { 
+            backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
+            quality: 0.1,
+            pixelRatio: 0.5
+          }).then(dataUrl => {
+            supabase.from('mind_maps').update({ 
+              thumbnail: JSON.stringify({ slides: slides || [], preview: dataUrl }) 
+            }).eq('id', mapId).then()
+          }).catch(console.error)
+        }
+      }
 
       setSaveStatus('saved')
     } catch (e) {
       console.error(e)
       setSaveStatus('error')
     }
-  }, [mapId, setSaveStatus])
+  }, [mapId, setSaveStatus, slides, theme, isReadOnly])
 
   useEffect(() => {
     // Debounce saves
