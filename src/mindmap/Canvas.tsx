@@ -390,7 +390,11 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
       if (error || edgesError) {
         setSaveStatus('error')
+        const missingTargets = dbEdges.filter(e => !dbNodes.find(n => n.id === e.target)).map(e => e.target)
+        const missingSources = dbEdges.filter(e => !dbNodes.find(n => n.id === e.source)).map(e => e.source)
         console.error('Save error nodes:', JSON.stringify(error, null, 2), 'edges:', JSON.stringify(edgesError, null, 2))
+        console.error('Missing targets in dbNodes:', missingTargets)
+        console.error('Missing sources in dbNodes:', missingSources)
       } else {
         // Sync node_tags
         const nodeIds = dbNodes.map(n => n.id)
