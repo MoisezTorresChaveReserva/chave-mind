@@ -52,29 +52,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
   const [startPoint, setStartPoint] = useState({ x: 0, y: 0 })
   const [currentPoint, setCurrentPoint] = useState({ x: 0, y: 0 })
 
-  // Presentation Player Engine
-  useEffect(() => {
-    if (presentationMode === 'playing' && slides && slides[currentSlideIndex]) {
-      const slide = slides[currentSlideIndex]
-      const { x, y, width, height } = slide.bounds
-      fitBounds({ x, y, width, height }, { duration: 800, padding: 0.1 })
-      
-      if (slide.collapsedNodes) {
-        const collapsedSet = new Set(slide.collapsedNodes)
-        setNodes((nds: Node[]) => applyAutoLayout(nds.map(n => ({
-          ...n,
-          data: {
-            ...n.data,
-            collapsed: collapsedSet.has(n.id)
-          }
-        }))))
-      }
-    } else if (presentationMode === 'edit') {
-      // Return to full view when exiting playing
-      fitView({ duration: 800, padding: 0.2 })
-    }
-  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes, applyAutoLayout])
-  
+
   // Map our DB types to React Flow types
   const defaultNodes: Node[] = initialNodes.length > 0 ? initialNodes.map((n: any) => {
     let visualData = {}
@@ -326,6 +304,29 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       return { ...n, data: { ...n.data, direction: dir } }
     })
   }, [])
+
+  // Presentation Player Engine
+  useEffect(() => {
+    if (presentationMode === 'playing' && slides && slides[currentSlideIndex]) {
+      const slide = slides[currentSlideIndex]
+      const { x, y, width, height } = slide.bounds
+      fitBounds({ x, y, width, height }, { duration: 800, padding: 0.1 })
+      
+      if (slide.collapsedNodes) {
+        const collapsedSet = new Set(slide.collapsedNodes)
+        setNodes((nds: Node[]) => applyAutoLayout(nds.map(n => ({
+          ...n,
+          data: {
+            ...n.data,
+            collapsed: collapsedSet.has(n.id)
+          }
+        }))))
+      }
+    } else if (presentationMode === 'edit') {
+      // Return to full view when exiting playing
+      fitView({ duration: 800, padding: 0.2 })
+    }
+  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes, applyAutoLayout])
 
   // Auto-save logic
   const saveToDb = useCallback(async (currentNodes: Node[], currentEdges: Edge[]) => {
