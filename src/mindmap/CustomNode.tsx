@@ -342,6 +342,26 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                         }
                       }
                     }}
+                    className="flex-1 text-xs p-1 border rounded"
+                  />
+                  <button 
+                    onClick={async (e) => {
+                      e.stopPropagation()
+                      if (newTagText.trim()) {
+                        const mapId = data.mapId as string
+                        const tempId = generateId()
+                        const newTag = { id: tempId, text: newTagText.trim(), color: newTagColor }
+                        addMapTag(newTag) // Optimistic
+                        updateFormatting({ tags: [...nodeTagsIds, tempId] })
+                        setNewTagText('')
+                        
+                        const { data: inserted } = await supabase.from('map_tags').insert({ map_id: mapId, text: newTag.text, color: newTag.color }).select().single()
+                        if (inserted) {
+                           useMapStore.getState().setMapTags([...useMapStore.getState().mapTags.filter(t => t.id !== tempId), inserted])
+                           updateFormatting({ tags: [...nodeTagsIds.filter(id => id !== tempId), inserted.id] })
+                        }
+                      }
+                    }}
                     className="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600"
                   >
                     +
