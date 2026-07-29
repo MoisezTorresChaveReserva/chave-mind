@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { MindMap, MapNode, MapEdge } from '@/types'
-import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight } from 'lucide-react'
+import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight, Undo2, Redo2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Canvas from '@/mindmap/Canvas'
 import Sidebar from '@/components/Sidebar'
@@ -10,6 +10,7 @@ import ShareModal from '@/components/ShareModal'
 import { supabase } from '@/supabase/client'
 import { toJpeg } from 'html-to-image'
 import { useMapStore } from '@/store/mapStore'
+import { useHistoryStore } from '@/store/historyStore'
 
 export default function Editor({ map, initialNodes, initialEdges, initialMapTags = [], initialNodeTags = [], user, isReadOnly = false }: { map: MindMap, initialNodes: MapNode[], initialEdges: MapEdge[], initialMapTags?: any[], initialNodeTags?: any[], user: any, isReadOnly?: boolean }) {
   const router = useRouter()
@@ -27,6 +28,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   
   // Zustand Store
   const { mapTags, setMapTags } = useMapStore()
+  const { past, future } = useHistoryStore()
   
   // Title State
   const [mapTitle, setMapTitle] = useState(map.title)
@@ -174,6 +176,27 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
           </div>
 
           <div className="flex items-center gap-2 relative">
+            {!isReadOnly && (
+              <>
+                <button 
+                  onClick={() => window.dispatchEvent(new CustomEvent('undo-action'))}
+                  disabled={past.length === 0}
+                  className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                  title="Desfazer (Ctrl+Z)"
+                >
+                  <Undo2 size={16} />
+                </button>
+                <button 
+                  onClick={() => window.dispatchEvent(new CustomEvent('redo-action'))}
+                  disabled={future.length === 0}
+                  className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                  title="Refazer (Ctrl+Y)"
+                >
+                  <Redo2 size={16} />
+                </button>
+                <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
+              </>
+            )}
             <button 
               onClick={() => setIsColorful(!isColorful)} 
               className={`p-1.5 rounded-md transition-colors ${isColorful ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}

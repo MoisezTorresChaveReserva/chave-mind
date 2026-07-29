@@ -20,6 +20,7 @@ import { toJpeg, toPng, toSvg } from 'html-to-image'
 import CustomNode from './CustomNode'
 import { supabase } from '@/supabase/client'
 import { useMapStore } from '@/store/mapStore'
+import { useHistoryStore } from '@/store/historyStore'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -124,42 +125,38 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const lastThumbnailCapture = useRef(0)
 
-  // History state for Undo/Redo
-  const [past, setPast] = useState<{nodes: Node[], edges: Edge[]}[]>([])
-  const [future, setFuture] = useState<{nodes: Node[], edges: Edge[]}[]>([])
+  const { takeSnapshot: storeTakeSnapshot, undo: storeUndo, redo: storeRedo } = useHistoryStore()
 
   const takeSnapshot = useCallback(() => {
-    setPast(p => [...p, { nodes: getNodes(), edges: getEdges() }])
-    setFuture([])
-  }, [getNodes, getEdges])
+    storeTakeSnapshot(getNodes(), getEdges())
+  }, [getNodes, getEdges, storeTakeSnapshot])
 
   const undo = useCallback(() => {
-    setPast(p => {
-      if (p.length === 0) return p
-      const newPast = [...p]
-      const snapshot = newPast.pop()!
-      
-      setFuture(f => [...f, { nodes: getNodes(), edges: getEdges() }])
-      setNodes(snapshot.nodes)
-      setEdges(snapshot.edges)
-      
-      return newPast
-    })
-  }, [getNodes, getEdges, setNodes, setEdges])
+    const prevState = storeUndo(getNodes(), getEdges())
+    if (prevState) {
+      setNodes(prevState.nodes)
+      setEdges(prevState.edges)
+    }
+  }, [getNodes, getEdges, setNodes, setEdges, storeUndo])
 
   const redo = useCallback(() => {
-    setFuture(f => {
-      if (f.length === 0) return f
-      const newFuture = [...f]
-      const snapshot = newFuture.pop()!
-      
-      setPast(p => [...p, { nodes: getNodes(), edges: getEdges() }])
-      setNodes(snapshot.nodes)
-      setEdges(snapshot.edges)
-      
-      return newFuture
-    })
-  }, [getNodes, getEdges, setNodes, setEdges])
+    const nextState = storeRedo(getNodes(), getEdges())
+    if (nextState) {
+      setNodes(nextState.nodes)
+      setEdges(nextState.edges)
+    }
+  }, [getNodes, getEdges, setNodes, setEdges, storeRedo])
+
+  useEffect(() => {
+    const handleUndoAction = () => undo()
+    const handleRedoAction = () => redo()
+    window.addEventListener('undo-action', handleUndoAction)
+    window.addEventListener('redo-action', handleRedoAction)
+    return () => {
+      window.removeEventListener('undo-action', handleUndoAction)
+      window.removeEventListener('redo-action', handleRedoAction)
+    }
+  }, [undo, redo])
 
   useEffect(() => {
     const downloadDataUrl = (dataUrl: string, filename: string) => {
@@ -679,6 +676,10 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     })
   }, [getIntersectingNodes, setNodes, applyAutoLayout])
 
+  const onNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
+    takeSnapshot()
+  }, [takeSnapshot])
+
   const onNodeDragStop = useCallback((event: any, node: Node) => {
     if (!node.data.parent_id) {
       setNodes(nds => applyAutoLayout(nds)) // Snap back root
@@ -796,6 +797,22 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
           e.preventDefault()
           onAddSibling(selected.id)
         }
+      }
+      
+      if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+        if (e.shiftKey) {
+          e.preventDefault()
+          redo()
+        } else {
+          e.preventDefault()
+          undo()
+        }
+        return
+      }
+      if (e.key === 'y' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        redo()
+        return
       }
     }
 
