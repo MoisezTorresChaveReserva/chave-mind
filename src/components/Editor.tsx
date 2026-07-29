@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MindMap, MapNode, MapEdge } from '@/types'
+import { MindMap, MapNode, MapEdge, MapPresentation, Slide } from '@/types'
 import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight, Undo2, Redo2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Canvas from '@/mindmap/Canvas'
@@ -20,10 +20,15 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   const [isColorful, setIsColorful] = useState(false)
 
   // Presentation State
-  const [slides, setSlides] = useState<any[]>([])
+  const [presentations, setPresentations] = useState<MapPresentation[]>([])
+  const [activePresentationId, setActivePresentationId] = useState<string | null>(null)
+  const [slides, setSlides] = useState<Slide[]>([])
   const [presentationMode, setPresentationMode] = useState<'edit' | 'presentation_setup' | 'playing'>('edit')
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
   const [isCapturingMode, setIsCapturingMode] = useState(false)
+  const [updatingSlideId, setUpdatingSlideId] = useState<string | null>(null)
+  const [editingSlideId, setEditingSlideId] = useState<string | null>(null)
+  const [editingSlideName, setEditingSlideName] = useState('')
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   
   // Zustand Store
@@ -47,18 +52,39 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
 
   // Parse existing slides on mount
   useEffect(() => {
-    if (map.thumbnail) {
-      try {
-        const parsed = JSON.parse(map.thumbnail)
-        if (Array.isArray(parsed)) setSlides(parsed)
-        else {
-          if (parsed.slides) setSlides(parsed.slides)
+    async function loadPresentations() {
+      const { data, error } = await supabase.from('map_presentations').select('*').eq('map_id', map.id).order('created_at', { ascending: true })
+      
+      let legacySlides: Slide[] = []
+      if (map.thumbnail) {
+        try {
+          const parsed = JSON.parse(map.thumbnail)
+          if (Array.isArray(parsed)) legacySlides = parsed
+          else if (parsed.slides) legacySlides = parsed.slides
+        } catch (e) {
+          console.error("Failed to parse thumbnail json", e)
         }
-      } catch (e) {
-        console.error("Failed to parse thumbnail json", e)
+      }
+
+      if (data && data.length > 0) {
+        setPresentations(data)
+        setActivePresentationId(data[0].id)
+        setSlides(data[0].slides || [])
+      } else if (legacySlides.length > 0) {
+        // Migrate legacy slides to a presentation
+        const { data: newPres } = await supabase.from('map_presentations').insert({ map_id: map.id, name: 'Apresentação 1', slides: legacySlides }).select().single()
+        if (newPres) {
+          setPresentations([newPres])
+          setActivePresentationId(newPres.id)
+          setSlides(legacySlides)
+        }
+      } else {
+        // No presentations exist, just initialize empty
+        setPresentations([])
       }
     }
-  }, [map.thumbnail])
+    loadPresentations()
+  }, [map.id, map.thumbnail])
 
   // Initialize mapTags on mount
   useEffect(() => {
@@ -67,17 +93,11 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
 
   // Save slides when they change
   useEffect(() => {
-    if (slides.length > 0 || map.thumbnail) { // Avoid saving empty if never had anything
-      let preview = null
-      if (map.thumbnail) {
-        try {
-          const parsed = JSON.parse(map.thumbnail)
-          if (!Array.isArray(parsed) && parsed.preview) preview = parsed.preview
-        } catch(e) {}
-      }
-      supabase.from('mind_maps').update({ thumbnail: JSON.stringify({ slides, preview }) }).eq('id', map.id).then()
+    if (activePresentationId) {
+      supabase.from('map_presentations').update({ slides, updated_at: new Date().toISOString() }).eq('id', activePresentationId).then()
+      setPresentations(prev => prev.map(p => p.id === activePresentationId ? { ...p, slides } : p))
     }
-  }, [slides, map.id])
+  }, [slides, activePresentationId])
 
   const startPlaying = () => {
     if (slides.length === 0) return alert('Adicione pelo menos um slide antes de apresentar!')
@@ -291,18 +311,88 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
             currentSlideIndex={currentSlideIndex}
             isCapturingMode={isCapturingMode}
             setIsCapturingMode={setIsCapturingMode}
+            updatingSlideId={updatingSlideId}
+            setUpdatingSlideId={setUpdatingSlideId}
             isReadOnly={isReadOnly}
           />
         </main>
 
         {/* Presentation Sidebar */}
         {presentationMode === 'presentation_setup' && (
-          <div className="absolute right-4 top-16 bottom-4 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-2xl flex flex-col overflow-hidden z-20">
+          <div className="absolute right-4 top-16 bottom-4 w-72 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-2xl flex flex-col overflow-hidden z-20">
             <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-900">
-              <h3 className="font-semibold text-sm flex items-center gap-2"><MonitorPlay size={16} className="text-purple-500"/> Slides</h3>
+              <h3 className="font-semibold text-sm flex items-center gap-2"><MonitorPlay size={16} className="text-purple-500"/> Apresentações</h3>
               <button onClick={() => setPresentationMode('edit')} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><X size={16}/></button>
             </div>
             
+            <div className="p-3 border-b border-gray-100 dark:border-gray-800 flex flex-col gap-2">
+              <select 
+                value={activePresentationId || ''} 
+                onChange={(e) => {
+                  const presId = e.target.value
+                  setActivePresentationId(presId)
+                  setSlides(presentations.find(p => p.id === presId)?.slides || [])
+                }}
+                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-purple-500"
+              >
+                {presentations.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <button 
+                  onClick={async () => {
+                    const name = prompt('Nome da nova apresentação:')
+                    if (name) {
+                      const { data } = await supabase.from('map_presentations').insert({ map_id: map.id, name, slides: [] }).select().single()
+                      if (data) {
+                        setPresentations([...presentations, data])
+                        setActivePresentationId(data.id)
+                        setSlides([])
+                      }
+                    }
+                  }}
+                  className="flex-1 text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 py-1.5 rounded font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                >
+                  + Nova
+                </button>
+                <button 
+                  onClick={async () => {
+                     const name = prompt('Renomear apresentação:', presentations.find(p => p.id === activePresentationId)?.name || '')
+                     if (name && activePresentationId) {
+                        await supabase.from('map_presentations').update({ name }).eq('id', activePresentationId)
+                        setPresentations(prev => prev.map(p => p.id === activePresentationId ? { ...p, name } : p))
+                     }
+                  }}
+                  disabled={!activePresentationId}
+                  className="flex-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 py-1.5 rounded font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                >
+                  Renomear
+                </button>
+                <button 
+                  onClick={async () => {
+                    if (activePresentationId && confirm('Excluir esta apresentação?')) {
+                      await supabase.from('map_presentations').delete().eq('id', activePresentationId)
+                      const next = presentations.filter(p => p.id !== activePresentationId)
+                      setPresentations(next)
+                      if (next.length > 0) {
+                        setActivePresentationId(next[0].id)
+                        setSlides(next[0].slides || [])
+                      } else {
+                        setActivePresentationId(null)
+                        setSlides([])
+                      }
+                    }
+                  }}
+                  disabled={!activePresentationId}
+                  className="px-2 text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50"
+                  title="Excluir Apresentação"
+                >
+                  <Trash2 size={14}/>
+                </button>
+              </div>
+            </div>
+
             <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
               {slides.length === 0 ? (
                 <div className="text-center text-xs text-gray-400 mt-4 px-2">
@@ -310,42 +400,84 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                 </div>
               ) : (
                 slides.map((slide, index) => (
-                  <div key={slide.id} className="group flex items-center gap-2 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-2 rounded-lg hover:border-purple-300 transition-colors">
-                    <div className="flex flex-col opacity-50 group-hover:opacity-100 transition-opacity">
+                  <div key={slide.id} className="group flex flex-col gap-1 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-2 rounded-lg hover:border-purple-300 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col opacity-50 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => {
+                            if (index > 0) {
+                              const newSlides = [...slides]
+                              ;[newSlides[index - 1], newSlides[index]] = [newSlides[index], newSlides[index - 1]]
+                              setSlides(newSlides)
+                            }
+                          }}
+                          disabled={index === 0}
+                          className="hover:text-purple-600 disabled:opacity-30 disabled:hover:text-inherit"
+                        >
+                          <ChevronLeft size={14} className="rotate-90"/>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (index < slides.length - 1) {
+                              const newSlides = [...slides]
+                              ;[newSlides[index + 1], newSlides[index]] = [newSlides[index], newSlides[index + 1]]
+                              setSlides(newSlides)
+                            }
+                          }}
+                          disabled={index === slides.length - 1}
+                          className="hover:text-purple-600 disabled:opacity-30 disabled:hover:text-inherit"
+                        >
+                          <ChevronLeft size={14} className="-rotate-90"/>
+                        </button>
+                      </div>
+                      
+                      {editingSlideId === slide.id ? (
+                        <input
+                           autoFocus
+                           className="flex-1 text-xs border border-purple-500 rounded px-1 py-0.5 outline-none text-gray-900 dark:text-white bg-transparent"
+                           value={editingSlideName}
+                           onChange={e => setEditingSlideName(e.target.value)}
+                           onBlur={() => {
+                             setSlides(s => s.map(x => x.id === slide.id ? { ...x, name: editingSlideName } : x))
+                             setEditingSlideId(null)
+                           }}
+                           onKeyDown={e => {
+                             if (e.key === 'Enter') {
+                               setSlides(s => s.map(x => x.id === slide.id ? { ...x, name: editingSlideName } : x))
+                               setEditingSlideId(null)
+                             }
+                           }}
+                        />
+                      ) : (
+                        <span 
+                          onClick={() => { setEditingSlideId(slide.id); setEditingSlideName(slide.name || `Slide ${index + 1}`) }}
+                          className="text-xs font-medium flex-1 cursor-pointer hover:text-purple-600 truncate"
+                        >
+                          {slide.name || `Slide ${index + 1}`}
+                        </span>
+                      )}
+                      
                       <button 
-                        onClick={() => {
-                          if (index > 0) {
-                            const newSlides = [...slides]
-                            ;[newSlides[index - 1], newSlides[index]] = [newSlides[index], newSlides[index - 1]]
-                            setSlides(newSlides)
-                          }
-                        }}
-                        disabled={index === 0}
-                        className="hover:text-purple-600 disabled:opacity-30 disabled:hover:text-inherit"
+                        onClick={() => setSlides(s => s.filter(x => x.id !== slide.id))}
+                        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Excluir"
                       >
-                        <ChevronLeft size={14} className="rotate-90"/>
-                      </button>
-                      <button 
-                        onClick={() => {
-                          if (index < slides.length - 1) {
-                            const newSlides = [...slides]
-                            ;[newSlides[index + 1], newSlides[index]] = [newSlides[index], newSlides[index + 1]]
-                            setSlides(newSlides)
-                          }
-                        }}
-                        disabled={index === slides.length - 1}
-                        className="hover:text-purple-600 disabled:opacity-30 disabled:hover:text-inherit"
-                      >
-                        <ChevronLeft size={14} className="-rotate-90"/>
+                        <Trash2 size={14}/>
                       </button>
                     </div>
-                    <span className="text-xs font-medium flex-1">Slide {index + 1}</span>
-                    <button 
-                      onClick={() => setSlides(s => s.filter(x => x.id !== slide.id))}
-                      className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={14}/>
-                    </button>
+                    
+                    <div className="flex justify-between items-center mt-1 pt-1 border-t border-gray-200 dark:border-gray-700">
+                      <span className="text-[10px] text-gray-400">Área: {Math.round(slide.bounds.width)}x{Math.round(slide.bounds.height)}</span>
+                      <button
+                        onClick={() => {
+                          setUpdatingSlideId(slide.id)
+                          setIsCapturingMode(true)
+                        }}
+                        className="text-[10px] text-blue-500 hover:underline"
+                      >
+                        Retomar Área
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -354,17 +486,18 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
             <div className="p-3 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900">
               {isCapturingMode ? (
                 <div className="text-[11px] text-purple-600 font-medium text-center bg-purple-50 dark:bg-purple-900/30 p-2 rounded border border-purple-200 dark:border-purple-800">
-                  Arraste no mapa para criar o slide.
+                  {updatingSlideId ? 'Arraste no mapa para atualizar a área.' : 'Arraste no mapa para criar o slide.'}
                 </div>
               ) : (
                 <button 
-                  onClick={() => setIsCapturingMode(true)} 
-                  className="w-full py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-purple-600 border border-purple-200 dark:border-purple-800 rounded-lg text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors"
+                  onClick={() => { setUpdatingSlideId(null); setIsCapturingMode(true) }} 
+                  disabled={!activePresentationId}
+                  className="w-full py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-purple-600 border border-purple-200 dark:border-purple-800 rounded-lg text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
                 >
                   <Plus size={16} /> Novo Slide
                 </button>
               )}
-              <button onClick={startPlaying} className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors">
+              <button disabled={slides.length === 0} onClick={startPlaying} className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50">
                 <Play size={16} fill="currentColor" /> Apresentar
               </button>
             </div>

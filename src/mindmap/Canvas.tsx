@@ -43,7 +43,7 @@ const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
 }
 
-function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, isReadOnly }: any) {
+function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, updatingSlideId, setUpdatingSlideId, isReadOnly }: any) {
   const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, getIntersectingNodes } = useReactFlow()
   const { x: vpX, y: vpY, zoom: vpZoom } = useViewport()
   
@@ -973,21 +973,32 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     
     // Only save if it's a decent size box
     if (width > 50 && height > 50) {
-      const newSlide = {
-        id: generateId(),
-        bounds: {
-          x: Math.min(startPoint.x, currentPoint.x),
-          y: Math.min(startPoint.y, currentPoint.y),
-          width,
-          height
-        }
+      const bounds = {
+        x: Math.min(startPoint.x, currentPoint.x),
+        y: Math.min(startPoint.y, currentPoint.y),
+        width,
+        height
       }
+      
       if (setSlides) {
-        setSlides((prev: any) => [...prev, newSlide])
+        if (updatingSlideId) {
+          setSlides((prev: any) => prev.map((s: any) => s.id === updatingSlideId ? { ...s, bounds } : s))
+          if (setUpdatingSlideId) setUpdatingSlideId(null)
+        } else {
+          const newSlide = {
+            id: generateId(),
+            bounds
+          }
+          setSlides((prev: any) => [...prev, newSlide])
+        }
       }
       if (setIsCapturingMode) {
         setIsCapturingMode(false)
       }
+    } else {
+       // If box is too small, just cancel the mode
+       if (setIsCapturingMode) setIsCapturingMode(false)
+       if (setUpdatingSlideId) setUpdatingSlideId(null)
     }
   }
 

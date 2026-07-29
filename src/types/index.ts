@@ -1,6 +1,16 @@
 export type Slide = {
   id: string
+  name?: string
   bounds: { x: number; y: number; width: number; height: number }
+}
+
+export type MapPresentation = {
+  id: string
+  map_id: string
+  name: string
+  slides: Slide[]
+  created_at?: string
+  updated_at?: string
 }
 
 export type Tag = {
