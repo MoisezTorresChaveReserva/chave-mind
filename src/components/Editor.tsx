@@ -244,16 +244,50 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
             >
               <Focus size={16} />
             </button>
-            <button 
-              onClick={() => {
-                setPresentationMode(presentationMode === 'presentation_setup' ? 'edit' : 'presentation_setup')
-                setIsCapturingMode(false)
-              }}
-              className={`p-1.5 rounded-md transition-colors ${presentationMode !== 'edit' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
-              title="Apresentação"
-            >
-              <MonitorPlay size={16} />
-            </button>
+            <div className="relative group">
+              <button 
+                className={`p-1.5 rounded-md transition-colors ${presentationMode !== 'edit' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
+                title="Apresentação"
+              >
+                <MonitorPlay size={16} />
+              </button>
+              <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity flex flex-col py-1 z-50">
+                <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Apresentar</div>
+                {presentations.length === 0 ? (
+                  <div className="px-4 py-2 text-sm text-gray-400 italic">Nenhuma apresentação</div>
+                ) : (
+                  presentations.map(p => (
+                    <button 
+                      key={p.id}
+                      onClick={() => {
+                        setActivePresentationId(p.id)
+                        setSlides(p.slides || [])
+                        if ((p.slides || []).length === 0) {
+                          alert('Adicione pelo menos um slide antes de apresentar!')
+                          return
+                        }
+                        setCurrentSlideIndex(0)
+                        setPresentationMode('playing')
+                      }}
+                      className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/30 flex items-center gap-2 truncate"
+                    >
+                      <Play size={14} className="text-purple-500 flex-shrink-0" /> 
+                      <span className="truncate">{p.name}</span>
+                    </button>
+                  ))
+                )}
+                <div className="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
+                <button 
+                  onClick={() => {
+                    setPresentationMode('presentation_setup')
+                    setIsCapturingMode(false)
+                  }}
+                  className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <Settings size={14} className="text-gray-500 flex-shrink-0" /> Editar apresentações
+                </button>
+              </div>
+            </div>
             <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
             <button 
               onClick={() => setIsShareModalOpen(true)}
