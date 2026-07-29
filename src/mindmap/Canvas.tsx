@@ -984,16 +984,33 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         if (updatingSlideId) {
           setSlides((prev: any) => prev.map((s: any) => s.id === updatingSlideId ? { ...s, bounds } : s))
           if (setUpdatingSlideId) setUpdatingSlideId(null)
+          if (setIsCapturingMode) setIsCapturingMode(false)
         } else {
+          let autoName = ''
+          try {
+            const intersectedNodes = getIntersectingNodes(bounds)
+            if (intersectedNodes && intersectedNodes.length > 0) {
+              // Find the top-most or most prominent node. Here we just take the first one that has a label
+              const nodeWithLabel = intersectedNodes.find(n => n.data?.label)
+              if (nodeWithLabel) {
+                // strip html if any
+                const tempDiv = document.createElement('div')
+                tempDiv.innerHTML = String(nodeWithLabel.data.label)
+                autoName = tempDiv.textContent || tempDiv.innerText || ''
+              }
+            }
+          } catch(e) {
+            console.error('Failed to auto-name slide', e)
+          }
+
           const newSlide = {
             id: generateId(),
+            name: autoName.trim() || undefined,
             bounds
           }
           setSlides((prev: any) => [...prev, newSlide])
+          // We DO NOT set isCapturingMode to false here, allowing continuous capture
         }
-      }
-      if (setIsCapturingMode) {
-        setIsCapturingMode(false)
       }
     } else {
        // If box is too small, just cancel the mode

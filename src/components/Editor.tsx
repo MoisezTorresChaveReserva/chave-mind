@@ -400,35 +400,29 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                 </div>
               ) : (
                 slides.map((slide, index) => (
-                  <div key={slide.id} className="group flex flex-col gap-1 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-2 rounded-lg hover:border-purple-300 transition-colors">
+                  <div 
+                    key={slide.id} 
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', index.toString())
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10)
+                      const toIndex = index
+                      if (fromIndex !== toIndex && !isNaN(fromIndex)) {
+                        const newSlides = [...slides]
+                        const [movedSlide] = newSlides.splice(fromIndex, 1)
+                        newSlides.splice(toIndex, 0, movedSlide)
+                        setSlides(newSlides)
+                      }
+                    }}
+                    className="group flex flex-col gap-1 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-2 rounded-lg hover:border-purple-300 transition-colors"
+                  >
                     <div className="flex items-center gap-2">
-                      <div className="flex flex-col opacity-50 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => {
-                            if (index > 0) {
-                              const newSlides = [...slides]
-                              ;[newSlides[index - 1], newSlides[index]] = [newSlides[index], newSlides[index - 1]]
-                              setSlides(newSlides)
-                            }
-                          }}
-                          disabled={index === 0}
-                          className="hover:text-purple-600 disabled:opacity-30 disabled:hover:text-inherit"
-                        >
-                          <ChevronLeft size={14} className="rotate-90"/>
-                        </button>
-                        <button 
-                          onClick={() => {
-                            if (index < slides.length - 1) {
-                              const newSlides = [...slides]
-                              ;[newSlides[index + 1], newSlides[index]] = [newSlides[index], newSlides[index + 1]]
-                              setSlides(newSlides)
-                            }
-                          }}
-                          disabled={index === slides.length - 1}
-                          className="hover:text-purple-600 disabled:opacity-30 disabled:hover:text-inherit"
-                        >
-                          <ChevronLeft size={14} className="-rotate-90"/>
-                        </button>
+                      <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <GripVertical size={14} />
                       </div>
                       
                       {editingSlideId === slide.id ? (
@@ -485,9 +479,17 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
 
             <div className="p-3 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900">
               {isCapturingMode ? (
-                <div className="text-[11px] text-purple-600 font-medium text-center bg-purple-50 dark:bg-purple-900/30 p-2 rounded border border-purple-200 dark:border-purple-800">
-                  {updatingSlideId ? 'Arraste no mapa para atualizar a área.' : 'Arraste no mapa para criar o slide.'}
-                </div>
+                <>
+                  <div className="text-[11px] text-purple-600 font-medium text-center bg-purple-50 dark:bg-purple-900/30 p-2 rounded border border-purple-200 dark:border-purple-800">
+                    {updatingSlideId ? 'Arraste no mapa para atualizar a área.' : 'Arraste no mapa para criar o slide.'}
+                  </div>
+                  <button 
+                    onClick={() => { setIsCapturingMode(false); setUpdatingSlideId(null); }}
+                    className="w-full py-2 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-400 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Concluir Captura
+                  </button>
+                </>
               ) : (
                 <button 
                   onClick={() => { setUpdatingSlideId(null); setIsCapturingMode(true) }} 
