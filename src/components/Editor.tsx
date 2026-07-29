@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import Canvas from '@/mindmap/Canvas'
 import Sidebar from '@/components/Sidebar'
 import ShareModal from '@/components/ShareModal'
+import ExportModal from '@/components/ExportModal'
 import { supabase } from '@/supabase/client'
 import { toJpeg } from 'html-to-image'
 import { useMapStore } from '@/store/mapStore'
@@ -34,6 +35,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   const [editingSlideId, setEditingSlideId] = useState<string | null>(null)
   const [editingSlideName, setEditingSlideName] = useState('')
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   
   // Zustand Store
   const { mapTags, setMapTags } = useMapStore()
@@ -353,47 +355,11 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
               Compartilhar
             </button>
             <button 
-              onClick={() => alert('Configurações do mapa estarão disponíveis em breve!')}
-              className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
-              title="Configurações"
+              onClick={() => setIsExportModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-medium text-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
             >
-              <Settings size={16} />
+              <Download size={14} /> Exportar
             </button>
-            <div className="relative group">
-              <button className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"><MoreHorizontal size={16} /></button>
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity flex flex-col py-1 z-50">
-                <button 
-                  onClick={() => window.dispatchEvent(new CustomEvent('export-map', { detail: { format: 'png' } }))}
-                  className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  Exportar como PNG
-                </button>
-                <button 
-                  onClick={() => window.dispatchEvent(new CustomEvent('export-map', { detail: { format: 'svg' } }))}
-                  className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  Exportar como SVG
-                </button>
-                <button 
-                  onClick={() => window.dispatchEvent(new CustomEvent('export-map', { detail: { format: 'json' } }))}
-                  className="px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  Exportar como JSON
-                </button>
-                <div className="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
-                <button 
-                  onClick={async () => {
-                    if (confirm('Tem certeza que deseja excluir este mapa? Esta ação não pode ser desfeita.')) {
-                      await supabase.from('mind_maps').delete().eq('id', map.id)
-                      router.push('/')
-                    }
-                  }}
-                  className="px-4 py-2 text-sm text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
-                >
-                  Excluir Mapa
-                </button>
-              </div>
-            </div>
             </div>
           </header>
         )}
@@ -705,6 +671,18 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
         isOpen={isShareModalOpen} 
         onClose={() => setIsShareModalOpen(false)} 
         isOwner={map.user_id === user.id}
+      />
+      <ExportModal 
+        isOpen={isExportModalOpen} 
+        onClose={() => setIsExportModalOpen(false)}
+        presentations={presentations}
+        onExportMap={(format) => window.dispatchEvent(new CustomEvent('export-map', { detail: { format } }))}
+        onExportPresentation={(presentationId, format) => {
+          const presentation = presentations.find(p => p.id === presentationId)
+          if (presentation) {
+             window.dispatchEvent(new CustomEvent('export-presentation', { detail: { presentation, format } }))
+          }
+        }}
       />
     </div>
   )
