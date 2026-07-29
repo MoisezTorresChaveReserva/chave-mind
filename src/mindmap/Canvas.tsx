@@ -44,7 +44,7 @@ const generateId = () => {
 }
 
 function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, updatingSlideId, setUpdatingSlideId, isReadOnly }: any) {
-  const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, zoomTo } = useReactFlow()
+  const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, zoomTo, getIntersectingNodes } = useReactFlow()
   const { x: vpX, y: vpY, zoom: vpZoom } = useViewport()
   
   // Drag to select state
