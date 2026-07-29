@@ -1,7 +1,7 @@
 import React, { memo, useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react'
-import { Plus, Wand2, Type, Trash2, Palette, Image as ImageIcon, Link, Link2, Smile, X, Tag as TagIcon, Check, Edit2 } from 'lucide-react'
+import { Plus, Wand2, Type, Trash2, Palette, Image as ImageIcon, Link, Link2, Smile, X, Tag as TagIcon, Check, Edit2, Upload } from 'lucide-react'
 import { useMapStore } from '@/store/mapStore'
 import { supabase } from '@/supabase/client'
 
@@ -30,6 +30,8 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   const [editTagText, setEditTagText] = useState('')
   const [editTagColor, setEditTagColor] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   
   const { mapTags, addMapTag } = useMapStore()
   
@@ -134,6 +136,45 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
     }
   }
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const MAX_WIDTH = 400
+        const MAX_HEIGHT = 400
+        let width = img.width
+        let height = img.height
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width
+            width = MAX_WIDTH
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height
+            height = MAX_HEIGHT
+          }
+        }
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx?.drawImage(img, 0, 0, width, height)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+        
+        updateFormatting({ image_url: dataUrl })
+        setActiveMenu('none')
+      }
+      img.src = event.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+
   const THEME_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899', '#ffffff', '#1f2937', 'transparent']
 
   if (data.isGhost) {
@@ -177,27 +218,45 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           )}
 
           {activeMenu === 'image' && (
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-48">
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 w-56">
               <div className="text-xs font-semibold text-gray-500 flex justify-between">
-                <span>URL da Imagem</span>
+                <span>Imagem do Nó</span>
                 <button onClick={() => setActiveMenu('none')}><X size={14} /></button>
               </div>
+              
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 text-xs bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded py-2 transition-colors border border-dashed border-gray-300 dark:border-gray-600"
+              >
+                <Upload size={14} /> Fazer Upload
+              </button>
+              <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
+              
+              <div className="flex items-center gap-2 my-1">
+                <div className="h-px bg-gray-200 dark:bg-gray-700 flex-1"></div>
+                <span className="text-[10px] text-gray-400">OU URL</span>
+                <div className="h-px bg-gray-200 dark:bg-gray-700 flex-1"></div>
+              </div>
+
               <input
                 type="text"
                 placeholder="https://..."
                 value={tempUrl}
                 onChange={e => setTempUrl(e.target.value)}
-                className="w-full text-xs p-1 border rounded"
+                className="w-full text-xs p-1.5 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === 'Enter' && tempUrl.trim()) {
                     updateFormatting({ image_url: tempUrl })
                     setActiveMenu('none')
                     setTempUrl('')
                   }
                 }}
               />
-              <button onClick={() => { updateFormatting({ image_url: tempUrl }); setActiveMenu('none'); setTempUrl('') }} className="text-xs bg-blue-500 text-white rounded py-1">Aplicar</button>
-              <button onClick={() => { updateFormatting({ image_url: null }); setActiveMenu('none') }} className="text-xs text-red-500 py-1">Remover</button>
+              <button onClick={() => { if(tempUrl.trim()) { updateFormatting({ image_url: tempUrl }); setActiveMenu('none'); setTempUrl('') } }} className="text-xs bg-blue-500 hover:bg-blue-600 text-white rounded py-1.5 transition-colors">Aplicar URL</button>
+              
+              {data.image_url && (
+                <button onClick={() => { updateFormatting({ image_url: null }); setActiveMenu('none') }} className="text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded py-1.5 transition-colors mt-1">Remover Imagem atual</button>
+              )}
             </div>
           )}
 
@@ -400,7 +459,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         onContextMenu={onContextMenu}
       >
         {!!data.image_url && (
-          <img src={data.image_url as string} alt="Node media" className="max-w-[120px] max-h-[80px] object-contain rounded mb-1 border border-gray-100 dark:border-gray-800" />
+          <img src={data.image_url as string} alt="Node media" className="max-w-[180px] max-h-[120px] object-contain rounded mb-1 border border-gray-100 dark:border-gray-800" />
         )}
 
         <div className="flex flex-col w-full relative">

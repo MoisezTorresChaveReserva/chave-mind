@@ -208,28 +208,39 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       if (!node) return 100
       const label = (node.data.label as string) || ''
       const isRoot = !node.data.parent_id
-      // Base width for character (fallback)
       const charWidth = isRoot ? 12 : 9
-      // Padding and toggle button space
       return Math.max(60, label.length * charWidth + 50)
+    }
+
+    const getNodeHeight = (nodeId: string) => {
+      const node = nodesList.find(n => n.id === nodeId)
+      if (node && node.measured?.height) return node.measured.height
+      if (!node) return 40
+      
+      let h = 40
+      if (node.data.image_url) h += 130
+      if ((node.data.tags as string[])?.length > 0) h += 20
+      return h
     }
 
     const getSubtreeHeight = (nodeId: string): number => {
       const children = childrenMap.get(nodeId) || []
+      const nodeHeight = getNodeHeight(nodeId)
       const node = nodesList.find(n => n.id === nodeId)
-      if (children.length === 0 || node?.data.collapsed) return NODE_HEIGHT
+      if (children.length === 0 || node?.data.collapsed) return nodeHeight
       
       let total = 0
       for (const cid of children) total += getSubtreeHeight(cid)
       total += (children.length - 1) * VERTICAL_SPACING
-      return total
+      return Math.max(total, nodeHeight)
     }
 
     const positions = new Map<string, {x: number, y: number}>()
     const nodeDirections = new Map<string, 'left' | 'right'>()
 
     const assignPositions = (nodeId: string, cx: number, cy: number, direction: 'left' | 'right' = 'right') => {
-      positions.set(nodeId, { x: cx, y: cy })
+      const nodeHeight = getNodeHeight(nodeId)
+      positions.set(nodeId, { x: cx, y: cy - nodeHeight / 2 })
       nodeDirections.set(nodeId, direction)
       
       const node = nodesList.find(n => n.id === nodeId)
@@ -272,8 +283,9 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
          return !node || node.position.x >= r.position.x
       }).reduce((sum, cid) => sum + getSubtreeHeight(cid) + VERTICAL_SPACING, 0) - VERTICAL_SPACING
 
-      let currentLeftY = r.position.y - Math.max(0, totalLeftHeight) / 2
-      let currentRightY = r.position.y - Math.max(0, totalRightHeight) / 2
+      const rootHeight = getNodeHeight(r.id)
+      let currentLeftY = (r.position.y + rootHeight / 2) - Math.max(0, totalLeftHeight) / 2
+      let currentRightY = (r.position.y + rootHeight / 2) - Math.max(0, totalRightHeight) / 2
       
       const rootWidth = getNodeWidth(r.id)
       
