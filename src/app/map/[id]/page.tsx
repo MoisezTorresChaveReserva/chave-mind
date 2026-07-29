@@ -25,7 +25,7 @@ export default async function MapPage(props: { params: Promise<{ id: string }> }
     redirect('/')
   }
 
-  const { data: nodes } = await supabase.from('nodes').select('*').eq('map_id', params.id)
+  const { data: nodes } = await supabase.from('nodes').select('*').eq('map_id', params.id).order('order', { ascending: true })
   const { data: edges } = await supabase.from('edges').select('*').eq('map_id', params.id)
   const { data: mapTags } = await supabase.from('map_tags').select('*').eq('map_id', params.id)
   

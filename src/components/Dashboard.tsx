@@ -133,7 +133,7 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
           return { ...n, id: newId }
         })
 
-        const dbNodes = newNodesList.map((n: any) => {
+        const dbNodes = newNodesList.map((n: any, index: number) => {
           const originalParent = n.data?.parent_id
           const newParentId = originalParent ? idMap.get(originalParent) : null
           
@@ -145,6 +145,7 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
             y: n.position?.y || 0,
             parent_id: newParentId,
             collapsed: n.data?.collapsed || false,
+            order: index,
             color: JSON.stringify({
               bg_color: n.data?.bg_color,
               text_color: n.data?.text_color,

@@ -327,7 +327,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     if (!mapId) return
     
     try {
-      const dbNodes = currentNodes.map(n => ({
+      const dbNodes = currentNodes.map((n, index) => ({
         id: n.id,
         map_id: mapId,
         text: n.data.label as string,
@@ -335,6 +335,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         y: n.position.y,
         parent_id: n.data.parent_id || null,
         collapsed: n.data.collapsed as boolean || false,
+        order: index,
         color: JSON.stringify({
           bg_color: n.data.bg_color,
           text_color: n.data.text_color,
@@ -352,12 +353,22 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         color: e.style?.stroke || '#ec4899'
       }))
       
-      const { error } = await supabase.from('nodes').upsert(dbNodes)
-      const { error: edgesError } = await supabase.from('edges').upsert(dbEdges)
+      let error = null
+      let edgesError = null
+      
+      if (dbNodes.length > 0) {
+        const res = await supabase.from('nodes').upsert(dbNodes)
+        error = res.error
+      }
+      
+      if (dbEdges.length > 0) {
+        const res = await supabase.from('edges').upsert(dbEdges)
+        edgesError = res.error
+      }
 
       if (error || edgesError) {
         setSaveStatus('error')
-        console.error('Save error', error || edgesError)
+        console.error('Save error nodes:', JSON.stringify(error, null, 2), 'edges:', JSON.stringify(edgesError, null, 2))
       } else {
         // Sync node_tags
         const nodeIds = dbNodes.map(n => n.id)

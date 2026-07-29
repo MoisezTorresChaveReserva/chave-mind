@@ -1,7 +1,7 @@
 import React, { memo, useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react'
-import { Plus, Wand2, Type, Trash2, Palette, Image as ImageIcon, Link, Link2, Smile, X, Tag as TagIcon, Check } from 'lucide-react'
+import { Plus, Wand2, Type, Trash2, Palette, Image as ImageIcon, Link, Link2, Smile, X, Tag as TagIcon, Check, Edit2 } from 'lucide-react'
 import { useMapStore } from '@/store/mapStore'
 import { supabase } from '@/supabase/client'
 
@@ -26,6 +26,9 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   const [tempUrl, setTempUrl] = useState('')
   const [newTagText, setNewTagText] = useState('')
   const [newTagColor, setNewTagColor] = useState('#ec4899')
+  const [editingTagId, setEditingTagId] = useState<string | null>(null)
+  const [editTagText, setEditTagText] = useState('')
+  const [editTagColor, setEditTagColor] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   
   const { mapTags, addMapTag } = useMapStore()
@@ -249,22 +252,62 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                 {mapTags.length === 0 && <span className="text-xs text-gray-400 italic">Nenhuma etiqueta criada</span>}
                 {mapTags.map(tag => {
                   const isActive = nodeTagsIds.includes(tag.id)
-                  return (
-                    <button 
-                      key={tag.id}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        const isActive = nodeTagsIds.includes(tag.id)
-                        const newIds = isActive ? nodeTagsIds.filter(id => id !== tag.id) : [...nodeTagsIds, tag.id]
-                        updateFormatting({ tags: newIds }) // Handled by saveToDb in Canvas.tsx
-                      }}
-                      className="flex items-center gap-2 text-xs p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                    >
-                      <div className={`w-3 h-3 rounded-full flex items-center justify-center`} style={{ backgroundColor: tag.color }}>
-                        {isActive && <Check size={8} color="#fff" />}
+                  
+                  if (editingTagId === tag.id) {
+                    return (
+                      <div key={tag.id} className="flex flex-col gap-2 p-1.5 border rounded border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                        <div className="flex items-center gap-1">
+                          <input type="color" value={editTagColor} onChange={e => setEditTagColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer border-0 p-0" />
+                          <input type="text" value={editTagText} onChange={e => setEditTagText(e.target.value)} className="flex-1 text-xs p-1 border rounded" />
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <button onClick={async (e) => {
+                             e.stopPropagation()
+                             setEditingTagId(null)
+                             useMapStore.getState().setMapTags(useMapStore.getState().mapTags.filter(t => t.id !== tag.id))
+                             await supabase.from('map_tags').delete().eq('id', tag.id)
+                          }} className="text-xs text-red-500 hover:underline">Excluir</button>
+                          <div className="flex gap-2">
+                            <button onClick={(e) => { e.stopPropagation(); setEditingTagId(null) }} className="text-xs text-gray-500 hover:underline">Cancelar</button>
+                            <button onClick={async (e) => {
+                               e.stopPropagation()
+                               if (!editTagText.trim()) return
+                               const updatedTag = { ...tag, text: editTagText.trim(), color: editTagColor }
+                               useMapStore.getState().setMapTags(useMapStore.getState().mapTags.map(t => t.id === tag.id ? updatedTag : t))
+                               setEditingTagId(null)
+                               await supabase.from('map_tags').update({ text: updatedTag.text, color: updatedTag.color }).eq('id', tag.id)
+                            }} className="text-xs text-blue-500 font-semibold hover:underline">Salvar</button>
+                          </div>
+                        </div>
                       </div>
-                      <span className="truncate">{tag.text}</span>
-                    </button>
+                    )
+                  }
+
+                  return (
+                    <div key={tag.id} className="flex items-center group relative p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const isActive = nodeTagsIds.includes(tag.id)
+                          const newIds = isActive ? nodeTagsIds.filter(id => id !== tag.id) : [...nodeTagsIds, tag.id]
+                          updateFormatting({ tags: newIds }) 
+                        }}
+                        className="flex-1 flex items-center gap-2 text-xs"
+                      >
+                        <div className={`w-3 h-3 rounded-full flex items-center justify-center`} style={{ backgroundColor: tag.color }}>
+                          {isActive && <Check size={8} color="#fff" />}
+                        </div>
+                        <span className="truncate">{tag.text}</span>
+                      </button>
+                      <button onClick={(e) => {
+                         e.stopPropagation()
+                         setEditingTagId(tag.id)
+                         setEditTagText(tag.text)
+                         setEditTagColor(tag.color)
+                      }} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-700 p-1">
+                        <Edit2 size={12} />
+                      </button>
+                    </div>
                   )
                 })}
               </div>
@@ -299,33 +342,11 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                         }
                       }
                     }}
-                    className="flex-1 text-xs p-1 border rounded"
-                  />
+                    className="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600"
+                  >
+                    +
+                  </button>
                 </div>
-                <button 
-                  onClick={async () => {
-                    if (newTagText.trim()) {
-                      const mapId = data.mapId as string
-                      const tempId = generateId()
-                      const newTag = { id: tempId, text: newTagText.trim(), color: newTagColor }
-                      addMapTag(newTag) // Optimistic
-                      updateFormatting({ tags: [...nodeTagsIds, tempId] })
-                      setNewTagText('')
-                      
-                      const { data: inserted } = await supabase.from('map_tags').insert({ map_id: mapId, text: newTag.text, color: newTag.color }).select().single()
-                      if (inserted) {
-                         // Update store with real ID
-                         useMapStore.getState().setMapTags(useMapStore.getState().mapTags.map(t => t.id === tempId ? inserted : t))
-                         updateFormatting({ tags: [...nodeTagsIds, inserted.id] })
-                         await supabase.from('node_tags').insert({ node_id: id, tag_id: inserted.id })
-                      }
-                    }
-                  }}
-                  disabled={!newTagText.trim()}
-                  className="text-xs bg-blue-500 text-white rounded py-1 disabled:opacity-50"
-                >
-                  Criar e Adicionar
-                </button>
               </div>
             </div>
           )}
