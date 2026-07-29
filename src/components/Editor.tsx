@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { MindMap, MapNode, MapEdge, MapPresentation, Slide } from '@/types'
-import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight, Undo2, Redo2 } from 'lucide-react'
+import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight, Undo2, Redo2, Focus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Canvas from '@/mindmap/Canvas'
 import Sidebar from '@/components/Sidebar'
@@ -18,6 +18,8 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [isColorful, setIsColorful] = useState(false)
+  const [isFocusMode, setIsFocusMode] = useState(false)
+  const [depthLevel, setDepthLevel] = useState(5)
 
   // Presentation State
   const [presentations, setPresentations] = useState<MapPresentation[]>([])
@@ -140,13 +142,13 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   return (
     <div className="flex h-screen w-screen bg-[var(--background)] overflow-hidden text-[var(--foreground)] transition-colors">
       {/* Sidebar (collapsible) */}
-      {presentationMode !== 'playing' && (
+      {presentationMode !== 'playing' && !isFocusMode && (
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setSidebarOpen} />
       )}
 
       <div className="flex-1 flex flex-col relative">
         {/* Top Header */}
-        {presentationMode !== 'playing' && (
+        {presentationMode !== 'playing' && !isFocusMode && (
           <header className="h-14 bg-[var(--background)]/80 backdrop-blur border-b border-[var(--border)] flex items-center justify-between px-4 z-10 absolute top-0 left-0 right-0">
           <div className="flex items-center gap-3">
             <button 
@@ -234,6 +236,16 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
             <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
             <button 
               onClick={() => {
+                setIsFocusMode(true)
+                setPresentationMode('edit')
+              }}
+              className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+              title="Modo Foco"
+            >
+              <Focus size={16} />
+            </button>
+            <button 
+              onClick={() => {
                 setPresentationMode(presentationMode === 'presentation_setup' ? 'edit' : 'presentation_setup')
                 setIsCapturingMode(false)
               }}
@@ -296,7 +308,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
         )}
 
         {/* Canvas Area */}
-        <main className={`flex-1 w-full h-full ${presentationMode === 'playing' ? 'pt-0' : 'pt-14'} transition-all`}>
+        <main className={`flex-1 w-full h-full ${presentationMode === 'playing' || isFocusMode ? 'pt-0' : 'pt-14'} transition-all`}>
           <Canvas 
             mapId={map.id} 
             initialNodes={initialNodes} 
@@ -535,6 +547,61 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
               title="Sair"
             >
               <X size={20} />
+            </button>
+          </div>
+        )}
+
+        {/* Floating Focus Mode Toolbar */}
+        {isFocusMode && (
+          <div className="absolute bottom-6 right-6 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2 flex flex-col items-center gap-2 z-50">
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('undo-action'))}
+                disabled={past.length === 0}
+                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors disabled:opacity-30"
+                title="Desfazer (Ctrl+Z)"
+              >
+                <Undo2 size={16} />
+              </button>
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('redo-action'))}
+                disabled={future.length === 0}
+                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors disabled:opacity-30"
+                title="Refazer (Ctrl+Y)"
+              >
+                <Redo2 size={16} />
+              </button>
+            </div>
+            
+            <div className="w-full h-px bg-gray-200 dark:bg-gray-700"></div>
+
+            <div className="flex flex-col items-center gap-1 w-full">
+              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Níveis</span>
+              <div className="flex flex-col gap-1 w-full">
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => {
+                       setDepthLevel(level)
+                       window.dispatchEvent(new CustomEvent('set-depth-level', { detail: { level } }))
+                    }}
+                    className={`w-full py-1 text-xs font-medium rounded transition-colors ${depthLevel === level ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                    title={`Mostrar até o nível ${level}`}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="w-full h-px bg-gray-200 dark:bg-gray-700"></div>
+
+            <button 
+              onClick={() => setIsFocusMode(false)}
+              className="w-full p-1.5 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 rounded text-xs font-medium transition-colors"
+              title="Sair do Foco"
+            >
+              <X size={16} className="mx-auto" />
             </button>
           </div>
         )}

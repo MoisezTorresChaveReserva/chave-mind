@@ -451,6 +451,57 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
   }, [saveToDb, getNodes, getEdges])
 
+  useEffect(() => {
+    const handleSetDepthLevel = (e: any) => {
+      if (isReadOnly) return
+      const level = e.detail.level
+      
+      const currentNodes = getNodes()
+      const currentEdges = getEdges()
+
+      // Calculate depth for each node
+      const depthMap = new Map<string, number>()
+      
+      // Find roots: nodes with no incoming edges
+      const incomingEdges = new Map<string, string[]>()
+      currentEdges.forEach(edge => {
+        if (!incomingEdges.has(edge.target)) incomingEdges.set(edge.target, [])
+        incomingEdges.get(edge.target)!.push(edge.source)
+      })
+
+      const roots = currentNodes.filter(n => !incomingEdges.has(n.id))
+      
+      const queue = roots.map(r => ({ id: r.id, depth: 0 }))
+      const visited = new Set<string>()
+
+      while(queue.length > 0) {
+        const { id, depth } = queue.shift()!
+        if (visited.has(id)) continue
+        visited.add(id)
+        depthMap.set(id, depth)
+
+        const children = currentEdges.filter(e => e.source === id).map(e => e.target)
+        children.forEach(c => {
+          queue.push({ id: c, depth: depth + 1 })
+        })
+      }
+
+      // Update nodes
+      setNodes((prev: Node[]) => prev.map(n => {
+         const nodeDepth = depthMap.has(n.id) ? depthMap.get(n.id)! : 0
+         if (level === 5) {
+            return { ...n, data: { ...n.data, collapsed: false } }
+         } else {
+            const shouldCollapse = nodeDepth >= level
+            return { ...n, data: { ...n.data, collapsed: shouldCollapse } }
+         }
+      }))
+    }
+    
+    window.addEventListener('set-depth-level', handleSetDepthLevel)
+    return () => window.removeEventListener('set-depth-level', handleSetDepthLevel)
+  }, [getNodes, getEdges, setNodes, isReadOnly])
+
   // Callbacks for Node Label updates
   const onNodeLabelChange = useCallback((id: string, newLabel: string) => {
     takeSnapshot()
@@ -943,7 +994,41 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
 
     return { displayNodes: finalNodes, displayEdges: finalEdges }
-  }, [nodes, edges])
+  }, [nodes, edges, isColorful])
+
+  const playingSlide = presentationMode === 'playing' && slides ? slides[currentSlideIndex] : null;
+  
+  const finalDisplayNodes = useMemo(() => {
+     if (!playingSlide) return displayNodes;
+     return displayNodes.map(n => {
+        const b = playingSlide.bounds;
+        const x = n.position.x;
+        const y = n.position.y;
+        const inSlide = x >= b.x - 100 && x <= b.x + b.width + 100 && y >= b.y - 100 && y <= b.y + b.height + 100;
+        return {
+           ...n,
+           style: { ...n.style, opacity: inSlide ? 1 : 0.2, transition: 'opacity 0.5s ease' }
+        }
+     });
+  }, [displayNodes, playingSlide]);
+
+  const finalDisplayEdges = useMemo(() => {
+     if (!playingSlide) return displayEdges;
+     return displayEdges.map(e => {
+        const sourceNode = displayNodes.find(n => n.id === e.source);
+        const targetNode = displayNodes.find(n => n.id === e.target);
+        if (!sourceNode || !targetNode) return e;
+        const b = playingSlide.bounds;
+        const inSlide = sourceNode.position.x >= b.x - 100 && sourceNode.position.x <= b.x + b.width + 100 && 
+           targetNode.position.x >= b.x - 100 && targetNode.position.x <= b.x + b.width + 100 &&
+           sourceNode.position.y >= b.y - 100 && sourceNode.position.y <= b.y + b.height + 100 &&
+           targetNode.position.y >= b.y - 100 && targetNode.position.y <= b.y + b.height + 100;
+        return {
+           ...e,
+           style: { ...e.style, opacity: inSlide ? 1 : 0.2, transition: 'opacity 0.5s ease' }
+        }
+     });
+  }, [displayEdges, displayNodes, playingSlide]);
 
   // Mouse Handlers for Drag-to-Select Slide Capture
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -988,7 +1073,11 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         } else {
           let autoName = ''
           try {
-            const intersectedNodes = getIntersectingNodes(bounds)
+            const intersectedNodes = nodes.filter(n => {
+               const nx = n.position.x;
+               const ny = n.position.y;
+               return nx >= bounds.x && nx <= bounds.x + bounds.width && ny >= bounds.y && ny <= bounds.y + bounds.height;
+            })
             if (intersectedNodes && intersectedNodes.length > 0) {
               // Find the top-most or most prominent node. Here we just take the first one that has a label
               const nodeWithLabel = intersectedNodes.find(n => n.data?.label)
@@ -1036,8 +1125,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       onPointerLeave={handlePointerUp}
     >
       <ReactFlow
-        nodes={displayNodes}
-        edges={displayEdges}
+        nodes={finalDisplayNodes}
+        edges={finalDisplayEdges}
         onNodesChange={onNodesChangeWrapper}
         onEdgesChange={onEdgesChange}
         onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
@@ -1081,24 +1170,6 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
           <span className="bg-purple-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm" style={{ transform: `scale(${1/vpZoom})`, transformOrigin: 'top left' }}>Slide {index + 1}</span>
         </div>
       ))}
-
-      {/* Playing Mode Spotlight */}
-      {presentationMode === 'playing' && slides && slides[currentSlideIndex] && (
-        <div
-          className="absolute pointer-events-none z-10 transition-all duration-700 ease-in-out"
-          style={{
-            left: 0,
-            top: 0,
-            transform: `translate(${slides[currentSlideIndex].bounds.x * vpZoom + vpX}px, ${slides[currentSlideIndex].bounds.y * vpZoom + vpY}px) scale(${vpZoom})`,
-            transformOrigin: '0 0',
-            width: `${slides[currentSlideIndex].bounds.width}px`,
-            height: `${slides[currentSlideIndex].bounds.height}px`,
-            boxShadow: theme === 'dark' ? '0 0 0 9999px rgba(0, 0, 0, 0.85)' : '0 0 0 9999px rgba(255, 255, 255, 0.85)',
-            borderRadius: '16px',
-            border: theme === 'dark' ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.1)'
-          }}
-        />
-      )}
 
       {/* Current Drawing Box */}
       {isDrawing && drawBox && (
