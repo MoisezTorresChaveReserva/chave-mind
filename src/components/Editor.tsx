@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { MindMap, MapNode, MapEdge, MapPresentation, Slide } from '@/types'
-import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight, Undo2, Redo2, Focus, Layers, Download } from 'lucide-react'
+import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight, Undo2, Redo2, Focus, Layers, Download, Network, ListTree, GitMerge } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Canvas from '@/mindmap/Canvas'
 import Sidebar from '@/components/Sidebar'
@@ -36,6 +36,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   const [editingSlideName, setEditingSlideName] = useState('')
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [layoutMode, setLayoutMode] = useState<'mindmap' | 'orgchart' | 'list'>('mindmap')
   
   // Zustand Store
   const { mapTags, setMapTags } = useMapStore()
@@ -348,6 +349,42 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
               </div>
             </div>
             <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
+            
+            {/* Visualização Dropdown */}
+            <div className="relative group">
+              <button 
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors text-sm font-medium"
+                title="Modo de Visualização"
+              >
+                {layoutMode === 'mindmap' && <Network size={16} />}
+                {layoutMode === 'orgchart' && <GitMerge size={16} className="-rotate-90" />}
+                {layoutMode === 'list' && <ListTree size={16} />}
+                <span>Layout</span>
+              </button>
+              
+              <div className="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-1 z-50">
+                <button 
+                  onClick={() => setLayoutMode('mindmap')}
+                  className={`px-3 py-2 text-sm text-left rounded-lg flex items-center gap-2 ${layoutMode === 'mindmap' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                >
+                  <Network size={14} /> Mapa Mental
+                </button>
+                <button 
+                  onClick={() => setLayoutMode('orgchart')}
+                  className={`px-3 py-2 text-sm text-left rounded-lg flex items-center gap-2 ${layoutMode === 'orgchart' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                >
+                  <GitMerge size={14} className="-rotate-90" /> Organograma
+                </button>
+                <button 
+                  onClick={() => setLayoutMode('list')}
+                  className={`px-3 py-2 text-sm text-left rounded-lg flex items-center gap-2 ${layoutMode === 'list' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                >
+                  <ListTree size={14} /> Lista
+                </button>
+              </div>
+            </div>
+
+            <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
             <button 
               onClick={() => setIsShareModalOpen(true)}
               className="text-sm px-3 py-1.5 font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
@@ -375,6 +412,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
             isColorful={isColorful}
             isOutlined={isOutlined}
             globalLineColor={globalLineColor}
+            layoutMode={layoutMode}
             theme={theme}
             presentationMode={presentationMode}
             slides={slides}

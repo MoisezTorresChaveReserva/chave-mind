@@ -1,6 +1,6 @@
 import React, { memo, useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react'
+import { Handle, Position, NodeProps, useReactFlow, useUpdateNodeInternals } from '@xyflow/react'
 import { Plus, Wand2, Type, Trash2, Palette, Image as ImageIcon, Link, Link2, Smile, X, Tag as TagIcon, Check, Edit2, Upload } from 'lucide-react'
 import { useMapStore } from '@/store/mapStore'
 import { supabase } from '@/supabase/client'
@@ -38,6 +38,11 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   const nodeTagsIds = (data.tags as string[]) || []
   const nodeTags = mapTags.filter(t => nodeTagsIds.includes(t.id))
   const { setNodes, setEdges } = useReactFlow()
+  const updateNodeInternals = useUpdateNodeInternals()
+
+  useEffect(() => {
+    updateNodeInternals(id)
+  }, [id, data.direction, data.layoutMode, data.hasChildren, updateNodeInternals])
 
   const handleClickOutside = () => {
     if (contextMenu) {
@@ -70,6 +75,37 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   
   const isRoot = data.isRoot as boolean
   const isReadOnly = data.isReadOnly as boolean
+  const layoutMode = (data.layoutMode as string) || 'mindmap'
+
+  // Handle configuration based on layout mode
+  let targetPosition = data.direction === 'left' ? Position.Right : Position.Left
+  let targetId = data.direction === 'left' ? 'right' : 'left'
+  let targetStyle: any = { top: '50%' }
+  let targetClass = `opacity-0 ${data.direction === 'left' ? '!-mr-[7px]' : '!-ml-[7px]'}`
+  
+  let sourcePosition = data.direction === 'left' ? Position.Left : Position.Right
+  let sourceId = data.direction === 'left' ? 'left' : 'right'
+  let sourceStyle: any = { [data.direction === 'left' ? 'left' : 'right']: data.hasChildren ? (data.childCount === 1 ? '-28px' : '-16px') : '0px', top: '50%' }
+
+  if (layoutMode === 'orgchart') {
+    targetPosition = Position.Top
+    targetId = 'top'
+    targetStyle = { left: '50%' }
+    targetClass = 'opacity-0 !-mt-[7px]'
+    
+    sourcePosition = Position.Bottom
+    sourceId = 'bottom'
+    sourceStyle = { left: '50%', bottom: data.hasChildren ? '-16px' : '0px' }
+  } else if (layoutMode === 'list') {
+    targetPosition = Position.Left
+    targetId = 'left'
+    targetStyle = { top: '50%' }
+    targetClass = 'opacity-0 !-ml-[7px]'
+    
+    sourcePosition = Position.Bottom
+    sourceId = 'bottom'
+    sourceStyle = { left: '20px', bottom: data.hasChildren ? '-16px' : '0px' }
+  }
 
   useEffect(() => {
     setText(data.label as string || '')
@@ -476,14 +512,14 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         {!isRoot && (
           <Handle
             type="target"
-            id={data.direction === 'left' ? 'right' : 'left'}
-            position={data.direction === 'left' ? Position.Right : Position.Left}
-            className={`opacity-0 ${data.direction === 'left' ? '!-mr-[7px]' : '!-ml-[7px]'}`}
-            style={{ borderColor: branchColor, top: '50%' }}
+            id={targetId}
+            position={targetPosition}
+            className={targetClass}
+            style={{ borderColor: branchColor, ...targetStyle }}
           />
         )}
 
-        {!!data.hasChildren && (
+        {!!data.hasChildren && layoutMode === 'mindmap' && (
           <>
             <div
               className={`absolute top-1/2 -translate-y-1/2 z-0`}
@@ -507,33 +543,49 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             </button>
           </>
         )}
+        {!!data.hasChildren && layoutMode === 'orgchart' && (
+          <button
+            onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
+            className="absolute bottom-[-24px] left-1/2 -translate-x-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
+            style={{ borderColor: branchColor }}
+            title={data.collapsed ? "Expandir" : "Recolher"}
+          >
+            {!!data.collapsed && <div className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: branchColor }} />}
+          </button>
+        )}
+        {!!data.hasChildren && layoutMode === 'list' && (
+          <button
+            onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
+            className="absolute bottom-[-24px] left-[12px] w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
+            style={{ borderColor: branchColor }}
+            title={data.collapsed ? "Expandir" : "Recolher"}
+          >
+            {!!data.collapsed && <div className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: branchColor }} />}
+          </button>
+        )}
 
         {isRoot ? (
           <>
-            <Handle
-              type="source"
-              position={Position.Right}
-              id="right"
-              className="opacity-0"
-              style={{ right: '0px', top: '50%' }}
-              isConnectable={false}
-            />
-            <Handle
-              type="source"
-              position={Position.Left}
-              id="left"
-              className="opacity-0"
-              style={{ left: '0px', top: '50%' }}
-              isConnectable={false}
-            />
+            {layoutMode === 'mindmap' && (
+              <>
+                <Handle type="source" position={Position.Right} id="right" className="opacity-0" style={{ right: '0px', top: '50%' }} isConnectable={false} />
+                <Handle type="source" position={Position.Left} id="left" className="opacity-0" style={{ left: '0px', top: '50%' }} isConnectable={false} />
+              </>
+            )}
+            {layoutMode === 'orgchart' && (
+               <Handle type="source" position={Position.Bottom} id="bottom" className="opacity-0" style={{ left: '50%', bottom: '0px' }} isConnectable={false} />
+            )}
+            {layoutMode === 'list' && (
+               <Handle type="source" position={Position.Bottom} id="bottom" className="opacity-0" style={{ left: '20px', bottom: '0px' }} isConnectable={false} />
+            )}
           </>
         ) : (
           <Handle
             type="source"
-            id={data.direction === 'left' ? 'left' : 'right'}
-            position={data.direction === 'left' ? Position.Left : Position.Right}
+            id={sourceId}
+            position={sourcePosition}
             className="opacity-0"
-            style={{ [data.direction === 'left' ? 'left' : 'right']: data.hasChildren ? (data.childCount === 1 ? '-28px' : '-16px') : '0px', top: '50%' }}
+            style={sourceStyle}
             isConnectable={false}
           />
         )}

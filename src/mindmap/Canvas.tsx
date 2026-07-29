@@ -43,7 +43,7 @@ const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
 }
 
-function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, isOutlined, globalLineColor, theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, updatingSlideId, setUpdatingSlideId, isReadOnly }: any) {
+function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, isOutlined, globalLineColor, layoutMode = 'mindmap', theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, updatingSlideId, setUpdatingSlideId, isReadOnly }: any) {
   const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, zoomTo, getIntersectingNodes } = useReactFlow()
   const { x: vpX, y: vpY, zoom: vpZoom } = useViewport()
   
@@ -266,8 +266,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     return () => window.removeEventListener('export-presentation', handleExportPresentation)
   }, [fitBounds, zoomTo, fitView, theme, vpZoom, setSaveStatus])
 
-  // Symmetric Tree Auto-Layout
-  const applyAutoLayout = useCallback((nodesList: Node[]) => {
+  // Unified Layout Engine
+  const applyAutoLayout = useCallback((nodesList: Node[], mode: 'mindmap' | 'orgchart' | 'list' = layoutMode) => {
     const childrenMap = new Map<string, string[]>()
     nodesList.forEach(n => {
       const pid = n.data.parent_id
@@ -279,6 +279,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
     const NODE_HEIGHT = 40
     const VERTICAL_SPACING = 20
+    const HORIZONTAL_SPACING = 40
 
     const getNodeWidth = (nodeId: string) => {
       const node = nodesList.find(n => n.id === nodeId)
@@ -314,87 +315,152 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       return Math.max(total, nodeHeight)
     }
 
-    const positions = new Map<string, {x: number, y: number}>()
-    const nodeDirections = new Map<string, 'left' | 'right'>()
-
-    const assignPositions = (nodeId: string, cx: number, cy: number, direction: 'left' | 'right' = 'right') => {
-      const nodeHeight = getNodeHeight(nodeId)
-      positions.set(nodeId, { x: cx, y: cy - nodeHeight / 2 })
-      nodeDirections.set(nodeId, direction)
-      
-      const node = nodesList.find(n => n.id === nodeId)
-      if (node?.data.collapsed) return 
-
+    const getSubtreeWidthOrgchart = (nodeId: string): number => {
       const children = childrenMap.get(nodeId) || []
-      if (children.length === 0) return
-      
-      const totalHeight = getSubtreeHeight(nodeId)
-      let currentY = cy - totalHeight / 2
-      
       const nodeWidth = getNodeWidth(nodeId)
-      const gap = children.length === 1 ? 40 : 100
+      const node = nodesList.find(n => n.id === nodeId)
+      if (children.length === 0 || node?.data.collapsed) return nodeWidth
       
-      for (const cid of children) {
-        const childHeight = getSubtreeHeight(cid)
-        const childCenterY = currentY + childHeight / 2
-        
-        const childNodeWidth = getNodeWidth(cid)
-        const newX = direction === 'left' ? cx - childNodeWidth - gap : cx + nodeWidth + gap
-        
-        assignPositions(cid, newX, childCenterY, direction)
-        currentY += childHeight + VERTICAL_SPACING
-      }
+      let total = 0
+      for (const cid of children) total += getSubtreeWidthOrgchart(cid)
+      total += (children.length - 1) * HORIZONTAL_SPACING
+      return Math.max(total, nodeWidth)
     }
 
+    const positions = new Map<string, {x: number, y: number}>()
+    const nodeDirections = new Map<string, string>()
     const roots = nodesList.filter(n => !n.data.parent_id || !nodesList.find(x => x.id === n.data.parent_id))
-    
-    roots.forEach(r => {
-      positions.set(r.id, { x: r.position.x, y: r.position.y })
-      const children = childrenMap.get(r.id) || []
-      
-      const totalLeftHeight = children.filter(cid => {
-         const node = nodesList.find(n => n.id === cid)
-         return node && node.position.x < r.position.x
-      }).reduce((sum, cid) => sum + getSubtreeHeight(cid) + VERTICAL_SPACING, 0) - VERTICAL_SPACING
-      
-      const totalRightHeight = children.filter(cid => {
-         const node = nodesList.find(n => n.id === cid)
-         return !node || node.position.x >= r.position.x
-      }).reduce((sum, cid) => sum + getSubtreeHeight(cid) + VERTICAL_SPACING, 0) - VERTICAL_SPACING
 
-      const rootHeight = getNodeHeight(r.id)
-      let currentLeftY = (r.position.y + rootHeight / 2) - Math.max(0, totalLeftHeight) / 2
-      let currentRightY = (r.position.y + rootHeight / 2) - Math.max(0, totalRightHeight) / 2
-      
-      const rootWidth = getNodeWidth(r.id)
-      
-      children.forEach(cid => {
-        const childNode = nodesList.find(n => n.id === cid)
-        const childHeight = getSubtreeHeight(cid)
+    if (mode === 'mindmap') {
+      const assignPositions = (nodeId: string, cx: number, cy: number, direction: 'left' | 'right' = 'right') => {
+        const nodeHeight = getNodeHeight(nodeId)
+        positions.set(nodeId, { x: cx, y: cy - nodeHeight / 2 })
+        nodeDirections.set(nodeId, direction)
+        
+        const node = nodesList.find(n => n.id === nodeId)
+        if (node?.data.collapsed) return 
+  
+        const children = childrenMap.get(nodeId) || []
+        if (children.length === 0) return
+        
+        const totalHeight = getSubtreeHeight(nodeId)
+        let currentY = cy - totalHeight / 2
+        
+        const nodeWidth = getNodeWidth(nodeId)
         const gap = children.length === 1 ? 40 : 100
         
-        if (childNode && childNode.position.x < r.position.x) {
-          const childCenterY = currentLeftY + childHeight / 2
+        for (const cid of children) {
+          const childHeight = getSubtreeHeight(cid)
+          const childCenterY = currentY + childHeight / 2
+          
           const childNodeWidth = getNodeWidth(cid)
-          assignPositions(cid, r.position.x - childNodeWidth - gap, childCenterY, 'left')
-          currentLeftY += childHeight + VERTICAL_SPACING
-        } else {
-          const childCenterY = currentRightY + childHeight / 2
-          assignPositions(cid, r.position.x + rootWidth + gap, childCenterY, 'right')
-          currentRightY += childHeight + VERTICAL_SPACING
+          const newX = direction === 'left' ? cx - childNodeWidth - gap : cx + nodeWidth + gap
+          
+          assignPositions(cid, newX, childCenterY, direction)
+          currentY += childHeight + VERTICAL_SPACING
         }
+      }
+  
+      roots.forEach(r => {
+        positions.set(r.id, { x: r.position.x, y: r.position.y })
+        const children = childrenMap.get(r.id) || []
+        
+        const totalLeftHeight = children.filter(cid => {
+           const node = nodesList.find(n => n.id === cid)
+           return node?.data.direction === 'left' || (!node?.data.direction && node && node.position.x < r.position.x)
+        }).reduce((sum, cid) => sum + getSubtreeHeight(cid) + VERTICAL_SPACING, 0) - VERTICAL_SPACING
+        
+        const totalRightHeight = children.filter(cid => {
+           const node = nodesList.find(n => n.id === cid)
+           const isLeft = node?.data.direction === 'left' || (!node?.data.direction && node && node.position.x < r.position.x)
+           return !isLeft
+        }).reduce((sum, cid) => sum + getSubtreeHeight(cid) + VERTICAL_SPACING, 0) - VERTICAL_SPACING
+  
+        const rootHeight = getNodeHeight(r.id)
+        let currentLeftY = (r.position.y + rootHeight / 2) - Math.max(0, totalLeftHeight) / 2
+        let currentRightY = (r.position.y + rootHeight / 2) - Math.max(0, totalRightHeight) / 2
+        
+        const rootWidth = getNodeWidth(r.id)
+        
+        children.forEach(cid => {
+          const childNode = nodesList.find(n => n.id === cid)
+          const childHeight = getSubtreeHeight(cid)
+          const gap = children.length === 1 ? 40 : 100
+          
+          const isLeft = childNode?.data.direction === 'left' || (!childNode?.data.direction && childNode && childNode.position.x < r.position.x)
+          
+          if (isLeft) {
+            const childCenterY = currentLeftY + childHeight / 2
+            const childNodeWidth = getNodeWidth(cid)
+            assignPositions(cid, r.position.x - childNodeWidth - gap, childCenterY, 'left')
+            currentLeftY += childHeight + VERTICAL_SPACING
+          } else {
+            const childCenterY = currentRightY + childHeight / 2
+            assignPositions(cid, r.position.x + rootWidth + gap, childCenterY, 'right')
+            currentRightY += childHeight + VERTICAL_SPACING
+          }
+        })
       })
-    })
+    } else if (mode === 'orgchart') {
+      const assignOrgchartPositions = (nodeId: string, cx: number, cy: number) => {
+        const nodeWidth = getNodeWidth(nodeId)
+        positions.set(nodeId, { x: cx - nodeWidth / 2, y: cy })
+        
+        const node = nodesList.find(n => n.id === nodeId)
+        if (node?.data.collapsed) return
+        
+        const children = childrenMap.get(nodeId) || []
+        if (children.length === 0) return
+        
+        const totalWidth = getSubtreeWidthOrgchart(nodeId)
+        let currentX = cx - totalWidth / 2
+        
+        const nodeHeight = getNodeHeight(nodeId)
+        const gap = 60
+        
+        for (const cid of children) {
+          const childWidth = getSubtreeWidthOrgchart(cid)
+          const childCenterX = currentX + childWidth / 2
+          assignOrgchartPositions(cid, childCenterX, cy + nodeHeight + gap)
+          currentX += childWidth + HORIZONTAL_SPACING
+        }
+      }
+
+      roots.forEach(r => {
+        assignOrgchartPositions(r.id, r.position.x + getNodeWidth(r.id)/2, r.position.y)
+      })
+    } else if (mode === 'list') {
+      let currentListY = 0
+      
+      const assignListPositions = (nodeId: string, depth: number, startX: number) => {
+        positions.set(nodeId, { x: startX + depth * 40, y: currentListY })
+        
+        const node = nodesList.find(n => n.id === nodeId)
+        currentListY += getNodeHeight(nodeId) + VERTICAL_SPACING
+        
+        if (node?.data.collapsed) return
+        
+        const children = childrenMap.get(nodeId) || []
+        for (const cid of children) {
+          assignListPositions(cid, depth + 1, startX)
+        }
+      }
+
+      roots.forEach(r => {
+        currentListY = r.position.y
+        assignListPositions(r.id, 0, r.position.x)
+      })
+    }
 
     return nodesList.map(n => {
       const pos = positions.get(n.id)
-      const dir = nodeDirections.get(n.id) || 'right'
+      const dir = nodeDirections.has(n.id) ? nodeDirections.get(n.id) : (n.data.direction || 'right')
       if (pos) {
         return { ...n, position: { x: pos.x, y: pos.y }, data: { ...n.data, direction: dir } }
       }
       return { ...n, data: { ...n.data, direction: dir } }
     })
-  }, [])
+  }, [layoutMode])
 
   // Presentation Player Engine
   useEffect(() => {
@@ -447,13 +513,17 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         })
       }))
       
-      const dbEdges = currentEdges.map(e => ({
-        id: e.id,
-        map_id: mapId,
-        source: e.source,
-        target: e.target,
-        color: e.style?.stroke || '#ec4899'
-      }))
+      const validNodeIds = new Set(dbNodes.map(n => n.id))
+      
+      const dbEdges = currentEdges
+        .filter(e => validNodeIds.has(e.source) && validNodeIds.has(e.target))
+        .map(e => ({
+          id: e.id,
+          map_id: mapId,
+          source: e.source,
+          target: e.target,
+          color: e.style?.stroke || '#ec4899'
+        }))
       
       let error = null
       let edgesError = null
@@ -674,6 +744,11 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     setEdges(eds => [...eds, newEdge])
   }, [getNodes, setNodes, setEdges, applyAutoLayout, takeSnapshot])
 
+  // Re-apply layout when layoutMode changes
+  useEffect(() => {
+    setNodes(nds => applyAutoLayout(nds, layoutMode))
+  }, [layoutMode, applyAutoLayout, setNodes])
+
   // Auto-layout on dimension changes (e.g. text edit)
   const onNodesChangeWrapper = useCallback((changes: any[]) => {
     onNodesChange(changes)
@@ -860,7 +935,9 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       // Reparenting
       setNodes(nds => applyAutoLayout(nds.map(n => {
         if (n.id === node.id) {
-          return { ...n, data: { ...n.data, parent_id: targetNode.id, isDropTarget: false } }
+          const isTargetRoot = !targetNode.data.parent_id
+          const newDir = isTargetRoot ? (node.position.x < targetNode.position.x ? 'left' : 'right') : (targetNode.data.direction === 'left' ? 'left' : 'right')
+          return { ...n, data: { ...n.data, parent_id: targetNode.id, isDropTarget: false, direction: newDir } }
         }
         return { ...n, data: { ...n.data, isDropTarget: false } }
       })))
@@ -883,11 +960,16 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       // Sort siblings by Y
       siblings.sort((a, b) => a.position.y - b.position.y)
       
-      const newNodesList = [...allNodes].map(n => ({ ...n, data: { ...n.data, isDropTarget: false } }))
+      const newNodesList = [...allNodes].map(n => {
+        if (n.id === node.id && rootNode && n.data.parent_id === rootNode.id) {
+           return { ...n, data: { ...n.data, isDropTarget: false, direction: node.position.x < rootNode.position.x ? 'left' : 'right' } }
+        }
+        return { ...n, data: { ...n.data, isDropTarget: false } }
+      })
       const withoutSiblings = newNodesList.filter((n: any) => n.data.parent_id !== parentId)
-      const finalNodes = [...withoutSiblings, ...siblings]
+      const finalNodes = [...withoutSiblings, ...siblings.map(s => newNodesList.find(n => n.id === s.id) || s)]
       
-      setNodes(applyAutoLayout(finalNodes))
+      setNodes(applyAutoLayout(finalNodes as Node[]))
     }
   }, [getNodes, getEdges, setNodes, setEdges, applyAutoLayout, takeSnapshot])
 
@@ -1044,6 +1126,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         ...n.data,
         isColorful,
         isOutlined,
+        layoutMode,
         hasChildren: (childrenMap.get(n.id) || []).length > 0,
         childCount: (childrenMap.get(n.id) || []).length,
         branchColor: globalLineColor || nodeColors.get(n.id) || '#ec4899',
@@ -1055,13 +1138,32 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     let finalEdges = edges.filter(e => e.id !== 'ghost-preview-edge').map(e => {
       const targetNode = finalNodes.find(n => n.id === e.target)
       const color = globalLineColor || (targetNode ? (nodeColors.get(targetNode.id) || '#ec4899') : '#ec4899')
-      const isLeft = (targetNode?.data as any)?.direction === 'left'
+      
+      let edgeType = 'bezier'
+      let sHandle = 'right'
+      let tHandle = 'left'
+
+      if (layoutMode === 'orgchart') {
+        edgeType = 'smoothstep'
+        sHandle = 'bottom'
+        tHandle = 'top'
+      } else if (layoutMode === 'list') {
+        edgeType = 'step'
+        sHandle = 'bottom'
+        tHandle = 'left'
+      } else {
+        const isLeft = (targetNode?.data as any)?.direction === 'left'
+        sHandle = isLeft ? 'left' : 'right'
+        tHandle = isLeft ? 'right' : 'left'
+      }
+
       return {
         ...e,
-        sourceHandle: isLeft ? 'left' : 'right',
-        targetHandle: isLeft ? 'right' : 'left',
+        type: edgeType,
+        sourceHandle: sHandle,
+        targetHandle: tHandle,
         hidden: !visibleNodeIds.has(e.source) || !visibleNodeIds.has(e.target),
-        style: { ...e.style, stroke: color, strokeWidth: 3 }
+        style: { ...e.style, stroke: color, strokeWidth: layoutMode === 'list' ? 2 : 3 }
       }
     })
 
