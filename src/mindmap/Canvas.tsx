@@ -714,6 +714,10 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     const parent = getNodes().find(n => n.id === parentId)
     if (!parent) return
 
+    if (parent.data.collapsed && mapId) {
+      supabase.from('nodes').update({ collapsed: false }).eq('id', parentId).then()
+    }
+
     let spawnX = parent.position.x
     const isRoot = !parent.data.parent_id
     if (isRoot) {
@@ -740,9 +744,15 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       style: { stroke: '#ec4899', strokeWidth: 3 }
     }
     
-    setNodes(nds => applyAutoLayout([...nds.map(n => ({...n, selected: false})), {...newNode, selected: true}]))
+    setNodes(nds => applyAutoLayout([
+      ...nds.map(n => n.id === parentId 
+        ? { ...n, selected: false, data: { ...n.data, collapsed: false } } 
+        : { ...n, selected: false }
+      ), 
+      { ...newNode, selected: true }
+    ]))
     setEdges(eds => [...eds, newEdge])
-  }, [getNodes, setNodes, setEdges, applyAutoLayout, takeSnapshot])
+  }, [getNodes, setNodes, setEdges, applyAutoLayout, takeSnapshot, mapId])
 
   // Re-apply layout when layoutMode changes
   useEffect(() => {
@@ -1351,6 +1361,18 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         onEdgesChange={onEdgesChange}
         onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
         nodeTypes={nodeTypes}
+        onNodeClick={(_, node) => {
+          setNodes((nds) => nds.map((n) => ({
+            ...n,
+            selected: n.id === node.id
+          })))
+        }}
+        onPaneClick={() => {
+          setNodes((nds) => nds.map((n) => ({
+            ...n,
+            selected: false
+          })))
+        }}
         onNodeDrag={isReadOnly ? undefined : onNodeDrag}
         onNodeDragStop={isReadOnly ? undefined : onNodeDragStop}
         nodesDraggable={!isReadOnly}

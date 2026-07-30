@@ -532,7 +532,9 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             />
             <button
               onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
-              className="absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="nodrag nopan absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
               style={{
                 [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-28px' : '-16px',
                 borderColor: branchColor
@@ -546,7 +548,9 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         {!!data.hasChildren && layoutMode === 'orgchart' && (
           <button
             onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
-            className="absolute bottom-[-24px] left-1/2 -translate-x-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="nodrag nopan absolute bottom-[-24px] left-1/2 -translate-x-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
             style={{ borderColor: branchColor }}
             title={data.collapsed ? "Expandir" : "Recolher"}
           >
@@ -556,7 +560,9 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         {!!data.hasChildren && layoutMode === 'list' && (
           <button
             onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
-            className="absolute bottom-[-24px] left-[12px] w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="nodrag nopan absolute bottom-[-24px] left-[12px] w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
             style={{ borderColor: branchColor }}
             title={data.collapsed ? "Expandir" : "Recolher"}
           >
@@ -651,7 +657,9 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
               <div className="absolute -right-10 top-1/2 -translate-y-1/2 flex items-center z-20">
                 <button
                   onClick={(e) => { e.stopPropagation(); handleAddChild('right') }}
-                  className="w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="nodrag nopan w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm cursor-pointer"
                   title="Adicionar à Direita"
                 >
                   <Plus size={14} />
@@ -666,7 +674,9 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
               <div className="absolute -left-10 top-1/2 -translate-y-1/2 flex items-center z-20 flex-row-reverse">
                 <button
                   onClick={(e) => { e.stopPropagation(); handleAddChild('left') }}
-                  className="w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="nodrag nopan w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm cursor-pointer"
                   title="Adicionar à Esquerda"
                 >
                   <Plus size={14} />
@@ -677,7 +687,9 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             <div className={`absolute top-1/2 -translate-y-1/2 flex items-center z-20 ${data.direction === 'left' ? '-left-10 flex-row-reverse' : '-right-10'}`}>
               <button
                 onClick={(e) => { e.stopPropagation(); handleAddChild() }}
-                className="w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm"
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="nodrag nopan w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm cursor-pointer"
               >
                 <Plus size={14} />
               </button>
@@ -697,7 +709,9 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         {selected && !isRoot && !isReadOnly && (
           <button
             onClick={(e) => { e.stopPropagation(); handleAddSibling() }}
-            className="absolute -bottom-[26px] left-1/2 -translate-x-1/2 w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm z-10"
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="nodrag nopan absolute -bottom-[26px] left-1/2 -translate-x-1/2 w-5 h-5 bg-[#3b82f6] text-white rounded-full flex items-center justify-center hover:bg-blue-600 shadow-sm z-10 cursor-pointer"
           >
             <Plus size={14} />
           </button>
