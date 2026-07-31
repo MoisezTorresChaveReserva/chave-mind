@@ -1446,25 +1446,6 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
     >
-      {/* Remote Collaborator Cursors */}
-      {collaborators.map((c) => {
-        if (!c.cursor) return null
-        return (
-          <div
-            key={c.session_id || c.user_id}
-            className="absolute pointer-events-none z-50 flex items-center gap-1 transition-all duration-75"
-            style={{
-              transform: `translate(${c.cursor.x * vpZoom + vpX}px, ${c.cursor.y * vpZoom + vpY}px)`,
-              transformOrigin: '0 0'
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill={c.color} stroke="#ffffff" strokeWidth="2">
-              <path d="M3 3l7 18 3-7 7-3L3 3z" />
-            </svg>
-            <span
-              className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded shadow-md whitespace-nowrap"
-              style={{ backgroundColor: c.color }}
-            >
               {c.name}
             </span>
           </div>
