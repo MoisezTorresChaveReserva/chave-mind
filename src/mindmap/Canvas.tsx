@@ -499,8 +499,12 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       return { ...n, data: { ...n.data, direction: dir } }
     })
   }, [layoutMode])
-  const handleRemoteSync = useCallback(({ nodes: remoteNodes, edges: remoteEdges }: { nodes: Node[]; edges: Edge[] }) => {
+  const handleRemoteSync = useCallback(({ nodes: remoteNodes, edges: remoteEdges, mapTags: remoteMapTags }: { nodes: Node[]; edges: Edge[]; mapTags?: any[] }) => {
     isRemoteUpdate.current = true
+    
+    if (remoteMapTags) {
+      useMapStore.getState().setMapTags(remoteMapTags)
+    }
     
     setNodes((currentNodes) => {
       // Create a map of current node collapsed states to preserve them locally
@@ -545,6 +549,9 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
   }, [collaborators, onCollaboratorsChange])
 
+  // Add reactive subscription to mapTags
+  const mapTags = useMapStore(state => state.mapTags)
+
   // Debounced broadcast - only send after 300ms of no changes, and never during remote updates
   const broadcastTimerRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => {
@@ -554,14 +561,14 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     broadcastTimerRef.current = setTimeout(() => {
       if (!isRemoteUpdate.current) {
         const { nodes: cleanNodes, edges: cleanEdges } = serializeForBroadcast(nodes, edges)
-        broadcastSync(cleanNodes as Node[], cleanEdges as Edge[])
+        broadcastSync(cleanNodes as Node[], cleanEdges as Edge[], useMapStore.getState().mapTags)
       }
     }, 300)
     
     return () => {
       if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current)
     }
-  }, [nodes, edges, broadcastSync, serializeForBroadcast])
+  }, [nodes, edges, broadcastSync, serializeForBroadcast, mapTags])
 
   // Presentation Player Engine
   useEffect(() => {
