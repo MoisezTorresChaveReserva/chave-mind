@@ -11,6 +11,7 @@ export interface Collaborator {
   email: string
   color: string
   lastActive: number
+  avatar_url?: string | null
 }
 
 const COLLAB_COLORS = [
@@ -99,7 +100,8 @@ export function useRealtimeCollab({
                 name: p.name,
                 email: p.email,
                 color: p.color || getUserColor(p.session_id),
-                lastActive: Date.now()
+                lastActive: Date.now(),
+                avatar_url: p.avatar_url
               })
             } else {
               console.log('[Collab] Ignoring own presence (sessionId matches)')
@@ -128,8 +130,7 @@ export function useRealtimeCollab({
             name: userName.current,
             email: user?.email || '',
             color: userColor.current,
-            activeNodeId: null,
-            cursor: null
+            avatar_url: user?.user_metadata?.avatar_url || null
           })
           console.log('[Collab] ✓ Presence tracked successfully')
         } else {
@@ -191,7 +192,8 @@ export function useRealtimeCollab({
         user_id: user?.id || sessionId.current,
         name: userName.current,
         email: user?.email || '',
-        color: userColor.current
+        color: userColor.current,
+        avatar_url: user?.user_metadata?.avatar_url || null
       }).catch((err: any) => console.error('[Collab] Presence track error:', err))
     },
     [user?.id, user?.email]

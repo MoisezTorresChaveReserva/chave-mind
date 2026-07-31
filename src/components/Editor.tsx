@@ -408,7 +408,15 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                     className="w-7 h-7 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-white text-[10px] font-bold shadow-md relative group cursor-pointer"
                     style={{ backgroundColor: c.color }}
                   >
-                    {c.name.substring(0, 2).toUpperCase()}
+                    {c.avatar_url ? (
+                      <img src={c.avatar_url} alt={c.name} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      c.name.substring(0, 2).toUpperCase()
+                    )}
+                    
+                    {/* Green dot indicating online status */}
+                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full z-10"></div>
+                    
                     <div className="absolute top-full mt-1 hidden group-hover:flex flex-col items-center z-50 pointer-events-none">
                       <div className="bg-gray-900 text-white text-[11px] py-1 px-2 rounded shadow-md whitespace-nowrap">
                         {c.name} (Online)
