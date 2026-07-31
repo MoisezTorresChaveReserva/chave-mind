@@ -179,6 +179,12 @@ export function useRealtimeCollab({
   // Throttle presence updates to avoid flooding WebSocket
   const lastPresenceUpdate = useRef<number>(0)
 
+  // Keep track of latest presence state to merge updates
+  const presenceStateRef = useRef<{ activeNodeId: string | null; cursor: { x: number; y: number } | null }>({
+    activeNodeId: null,
+    cursor: null
+  })
+
   // Update presence active node (uses track instead of broadcast to avoid REST fallback)
   const updatePresenceState = useCallback(
     (data: { activeNodeId?: string | null; cursor?: { x: number; y: number } | null }) => {
@@ -191,14 +197,17 @@ export function useRealtimeCollab({
       }
       lastPresenceUpdate.current = now
 
+      if (data.activeNodeId !== undefined) presenceStateRef.current.activeNodeId = data.activeNodeId
+      if (data.cursor !== undefined) presenceStateRef.current.cursor = data.cursor
+
       channelRef.current.track({
         session_id: sessionId.current,
         user_id: user?.id || sessionId.current,
         name: userName.current,
         email: user?.email || '',
         color: userColor.current,
-        activeNodeId: data.activeNodeId !== undefined ? data.activeNodeId : null,
-        cursor: data.cursor !== undefined ? data.cursor : null
+        activeNodeId: presenceStateRef.current.activeNodeId,
+        cursor: presenceStateRef.current.cursor
       }).catch((err: any) => console.error('[Collab] Presence track error:', err))
     },
     [user?.id, user?.email]
