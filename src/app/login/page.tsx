@@ -16,19 +16,25 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    console.log('Tentando autenticação:', { email, isSignUp })
     
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password })
+        const { data, error } = await supabase.auth.signUp({ email, password })
+        console.log('Resultado SignUp:', { data, error })
         if (error) throw error
         alert('Verifique seu e-mail para confirmar o cadastro (ou faça login se auto-confirmado).')
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        console.log('Resultado SignIn:', { data, error })
         if (error) throw error
         window.location.href = '/'
       }
     } catch (err: any) {
-      setError(err.message)
+      console.error('Erro na autenticação:', err)
+      const msg = err?.message || JSON.stringify(err) || 'Erro desconhecido ao logar'
+      setError(msg)
+      alert('Erro ao logar: ' + msg)
     } finally {
       setLoading(false)
     }
