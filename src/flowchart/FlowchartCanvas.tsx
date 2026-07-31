@@ -352,38 +352,8 @@ function FlowchartCanvasInner({
     setEdges((eds) => eds.filter((e) => e.id !== edge.id))
   }, [isReadOnly])
 
-  const handlePointerMoveWithPresence = (e: React.PointerEvent) => {
-    const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    updatePresenceState({ cursor: flowPos })
-  }
-
   return (
-    <div className="flex w-full h-full relative overflow-hidden" ref={reactFlowWrapper} onPointerMove={handlePointerMoveWithPresence}>
-      {/* Remote Collaborator Cursors */}
-      {collaborators.map((c) => {
-        if (!c.cursor) return null
-        return (
-          <div
-            key={c.session_id || c.user_id}
-            className="absolute pointer-events-none z-50 flex items-center gap-1 transition-all duration-75"
-            style={{
-              transform: `translate(${c.cursor.x * vpZoom + vpX}px, ${c.cursor.y * vpZoom + vpY}px)`,
-              transformOrigin: '0 0'
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill={c.color} stroke="#ffffff" strokeWidth="2">
-              <path d="M3 3l7 18 3-7 7-3L3 3z" />
-            </svg>
-            <span
-              className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded shadow-md whitespace-nowrap"
-              style={{ backgroundColor: c.color }}
-            >
-              {c.name}
-            </span>
-          </div>
-        )
-      })}
-
+    <div className="flex w-full h-full relative overflow-hidden" ref={reactFlowWrapper}>
       {/* Sidebar specific for Flowchart shapes */}
       {!isReadOnly && (
         <div className="absolute left-4 top-4 bottom-4 w-16 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center py-4 gap-4 z-50">
@@ -417,8 +387,6 @@ function FlowchartCanvasInner({
         onDrop={onDrop}
         onDragOver={onDragOver}
         onEdgeContextMenu={onEdgeContextMenu}
-        onNodeClick={(_, node) => updatePresenceState({ activeNodeId: node.id })}
-        onPaneClick={() => updatePresenceState({ activeNodeId: null })}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         fitView

@@ -400,12 +400,11 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                 <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
               </>
             )}
-            {/* Collaborator Avatars */}
             {collaborators.length > 0 && (
               <div className="flex items-center -space-x-2 mr-2" title="Colaboradores online">
                 {collaborators.map((c) => (
                   <div
-                    key={c.user_id}
+                    key={c.session_id}
                     className="w-7 h-7 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-white text-[10px] font-bold shadow-md relative group cursor-pointer"
                     style={{ backgroundColor: c.color }}
                   >

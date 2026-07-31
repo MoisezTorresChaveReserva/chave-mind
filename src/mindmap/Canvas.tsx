@@ -1432,25 +1432,14 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }))
   }, [finalDisplayNodes, collaborators])
 
-  const handlePointerMoveWithPresence = (e: React.PointerEvent) => {
-    handlePointerMove(e)
-    const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    updatePresenceState({ cursor: flowPos })
-  }
-
   return (
     <div 
       className="w-full h-full relative overflow-hidden" 
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMoveWithPresence}
+      onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
     >
-              {c.name}
-            </span>
-          </div>
-        )
-      })}
 
       <ReactFlow
         nodes={finalDisplayNodesWithCollab}
@@ -1460,18 +1449,14 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
         nodeTypes={nodeTypes}
         onNodeClick={(_, node) => {
-          updatePresenceState({ activeNodeId: node.id })
           setNodes((nds) => nds.map((n) => ({
             ...n,
             selected: n.id === node.id
           })))
         }}
         onPaneClick={() => {
-          updatePresenceState({ activeNodeId: null })
-          setNodes((nds) => nds.map((n) => ({
-            ...n,
-            selected: false
-          })))
+          setNodes((nds) => nds.map((n) => ({ ...n, selected: false })))
+          setEdges((eds) => eds.map((e) => ({ ...e, selected: false })))
         }}
         onNodeDrag={isReadOnly ? undefined : onNodeDrag}
         onNodeDragStop={isReadOnly ? undefined : onNodeDragStop}
