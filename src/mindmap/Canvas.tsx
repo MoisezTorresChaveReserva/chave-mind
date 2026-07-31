@@ -658,7 +658,10 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         const nodeIds = dbNodes.map(n => n.id)
         if (nodeIds.length > 0) {
           // Clean existing tags for these nodes
-          await supabase.from('node_tags').delete().in('node_id', nodeIds)
+          const { error: deleteError } = await supabase.from('node_tags').delete().in('node_id', nodeIds)
+          if (deleteError) {
+            console.error('Node tags delete error:', deleteError)
+          }
           
           // Insert current tags
           const tagsToInsert: any[] = []
