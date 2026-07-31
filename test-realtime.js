@@ -27,12 +27,12 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 })
 
-const channelName = 'test_realtime_' + Date.now()
+const channelName = 'map_498e4e08-2a41-4b5f-a839-5098d41bd363'
 console.log('\n1. Creating channel:', channelName)
 
 const channel = supabase.channel(channelName, {
   config: {
-    broadcast: { self: true },  // self:true so we can test with just one client
+    broadcast: { self: true },
     presence: { key: 'test-user-1' }
   }
 })
@@ -45,13 +45,13 @@ channel
     const state = channel.presenceState()
     const keys = Object.keys(state)
     console.log('✓ PRESENCE SYNC received! Keys:', keys)
-    if (keys.length > 0) {
-      presenceReceived = true
-      console.log('  Presence data:', JSON.stringify(state[keys[0]][0]))
-    }
+    keys.forEach(k => {
+      console.log(`  - Key: ${k}, Payload:`, JSON.stringify(state[k][0]))
+    })
+    presenceReceived = true
   })
-  .on('broadcast', { event: 'test_broadcast' }, ({ payload }) => {
-    console.log('✓ BROADCAST received!', JSON.stringify(payload))
+  .on('broadcast', { event: 'nodes_edges_sync' }, ({ payload }) => {
+    console.log('✓ BROADCAST received!', payload.nodes?.length, 'nodes')
     broadcastReceived = true
   })
   .subscribe(async (status) => {
