@@ -10,9 +10,7 @@ export interface Collaborator {
   name: string
   email: string
   color: string
-  activeNodeId?: string | null
-  cursor?: { x: number; y: number } | null
-  lastActive?: number
+  lastActive: number
 }
 
 const COLLAB_COLORS = [
@@ -101,8 +99,6 @@ export function useRealtimeCollab({
                 name: p.name,
                 email: p.email,
                 color: p.color || getUserColor(p.session_id),
-                activeNodeId: p.activeNodeId || null,
-                cursor: p.cursor || null,
                 lastActive: Date.now()
               })
             } else {
@@ -176,38 +172,23 @@ export function useRealtimeCollab({
     [user?.id, isReadOnly]
   )
 
-  // Throttle presence updates to avoid flooding WebSocket
-  const lastPresenceUpdate = useRef<number>(0)
-
-  // Keep track of latest presence state to merge updates
-  const presenceStateRef = useRef<{ activeNodeId: string | null; cursor: { x: number; y: number } | null }>({
-    activeNodeId: null,
-    cursor: null
-  })
-
-  // Update presence active node (uses track instead of broadcast to avoid REST fallback)
+  // Update presence (just mark user as online)
   const updatePresenceState = useCallback(
-    (data: { activeNodeId?: string | null; cursor?: { x: number; y: number } | null }) => {
+    () => {
       if (!channelRef.current || !isSubscribedRef.current) return
       
       const now = Date.now()
-      // Always send if it's an activeNodeId change (important), otherwise throttle cursor to 100ms
-      if (data.activeNodeId === undefined && now - lastPresenceUpdate.current < 100) {
-        return
+      if (now - lastPresenceUpdate.current < 5000) {
+        return // Only update presence at most every 5 seconds if called manually
       }
       lastPresenceUpdate.current = now
-
-      if (data.activeNodeId !== undefined) presenceStateRef.current.activeNodeId = data.activeNodeId
-      if (data.cursor !== undefined) presenceStateRef.current.cursor = data.cursor
 
       channelRef.current.track({
         session_id: sessionId.current,
         user_id: user?.id || sessionId.current,
         name: userName.current,
         email: user?.email || '',
-        color: userColor.current,
-        activeNodeId: presenceStateRef.current.activeNodeId,
-        cursor: presenceStateRef.current.cursor
+        color: userColor.current
       }).catch((err: any) => console.error('[Collab] Presence track error:', err))
     },
     [user?.id, user?.email]
