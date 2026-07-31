@@ -172,6 +172,9 @@ export function useRealtimeCollab({
     [user?.id, isReadOnly]
   )
 
+  // Throttle presence updates to avoid flooding WebSocket
+  const lastPresenceUpdate = useRef<number>(0)
+
   // Update presence (just mark user as online)
   const updatePresenceState = useCallback(
     () => {

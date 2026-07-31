@@ -155,7 +155,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       // Create a map of current node collapsed states to preserve them locally
       const localCollapsedState = new Map(currentNodes.map(n => [n.id, n.data.collapsed]))
       
-      return remoteNodes.map(rn => ({
+      const mergedNodes = remoteNodes.map(rn => ({
         ...rn,
         data: {
           ...rn.data,
@@ -163,13 +163,19 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
           collapsed: localCollapsedState.has(rn.id) ? localCollapsedState.get(rn.id) : rn.data.collapsed
         }
       }))
+
+      // Recalculate layout based on the local collapsed state to avoid overlaps from remote positions
+      if (layoutMode !== 'free') {
+        return applyAutoLayout(mergedNodes as Node[], layoutMode)
+      }
+      return mergedNodes as Node[]
     })
 
     setEdges(remoteEdges)
     setTimeout(() => {
       isRemoteUpdate.current = false
     }, 500)
-  }, [setNodes, setEdges])
+  }, [setNodes, setEdges, applyAutoLayout, layoutMode])
 
   const { collaborators, broadcastSync, updatePresenceState } = useRealtimeCollab({
     mapId,
