@@ -42,7 +42,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
   useEffect(() => {
     updateNodeInternals(id)
-  }, [id, data.direction, data.layoutMode, data.hasChildren, updateNodeInternals])
+  }, [id, data.direction, data.layoutMode, data.hasChildren, data.tags, data.image_url, data.icon, data.link_url, data.label, nodeTags.length, updateNodeInternals])
 
   const handleClickOutside = () => {
     if (contextMenu) {
@@ -447,8 +447,13 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                         updateFormatting({ tags: [...nodeTagsIds, tempId] })
                         setNewTagText('')
                         
-                        const { data: inserted } = await supabase.from('map_tags').insert({ map_id: mapId, text: newTag.text, color: newTag.color }).select().single()
-                        if (inserted) {
+                        const { data: inserted, error: insertError } = await supabase.from('map_tags').insert({ map_id: mapId, text: newTag.text, color: newTag.color }).select().single()
+                        if (insertError) {
+                           console.error('Map tag insert error:', insertError)
+                           alert('Erro ao criar etiqueta: ' + insertError.message)
+                           useMapStore.getState().setMapTags(useMapStore.getState().mapTags.filter(t => t.id !== tempId))
+                           updateFormatting({ tags: nodeTagsIds.filter(id => id !== tempId) })
+                        } else if (inserted) {
                            useMapStore.getState().setMapTags([...useMapStore.getState().mapTags.filter(t => t.id !== tempId), inserted])
                            updateFormatting({ tags: [...nodeTagsIds.filter(id => id !== tempId), inserted.id] })
                         }
@@ -467,8 +472,13 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                         updateFormatting({ tags: [...nodeTagsIds, tempId] })
                         setNewTagText('')
                         
-                        const { data: inserted } = await supabase.from('map_tags').insert({ map_id: mapId, text: newTag.text, color: newTag.color }).select().single()
-                        if (inserted) {
+                        const { data: inserted, error: insertError } = await supabase.from('map_tags').insert({ map_id: mapId, text: newTag.text, color: newTag.color }).select().single()
+                        if (insertError) {
+                           console.error('Map tag insert error:', insertError)
+                           alert('Erro ao criar etiqueta: ' + insertError.message)
+                           useMapStore.getState().setMapTags(useMapStore.getState().mapTags.filter(t => t.id !== tempId))
+                           updateFormatting({ tags: nodeTagsIds.filter(id => id !== tempId) })
+                        } else if (inserted) {
                            useMapStore.getState().setMapTags([...useMapStore.getState().mapTags.filter(t => t.id !== tempId), inserted])
                            updateFormatting({ tags: [...nodeTagsIds.filter(id => id !== tempId), inserted.id] })
                         }

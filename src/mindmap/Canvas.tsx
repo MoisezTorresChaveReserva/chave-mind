@@ -663,13 +663,13 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
             console.error('Node tags delete error:', deleteError)
           }
           
-          // Insert current tags
+          // Insert current tags (filtering only IDs that exist in mapTags to prevent FK violations)
+          const validTagIds = new Set(useMapStore.getState().mapTags.map((t: any) => t.id))
           const tagsToInsert: any[] = []
           currentNodes.forEach(n => {
             const tags = Array.from(new Set((n.data.tags as string[]) || []))
             tags.forEach(tId => {
-              if (tId) {
-                // Ensure we don't have undefined values which could cause supabase-js to throw a local Error (which stringifies to {})
+              if (tId && validTagIds.has(tId)) {
                 tagsToInsert.push({ node_id: n.id, tag_id: tId })
               }
             })
@@ -679,12 +679,11 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
             try {
               const { error: insertError } = await supabase.from('node_tags').insert(tagsToInsert)
               if (insertError) {
-                console.error('Node tags insert error details:', insertError)
-                alert('Erro ao salvar etiquetas: ' + (insertError.message || JSON.stringify(insertError)))
+                const details = insertError.message || insertError.code || insertError.details || JSON.stringify(insertError, Object.getOwnPropertyNames(insertError))
+                console.warn('[NodeTags] Sync insert warning:', details)
               }
             } catch (err: any) {
-              console.error('Exception inserting node tags:', err)
-              alert('Exceção ao salvar etiquetas: ' + (err.message || String(err)))
+              console.warn('[NodeTags] Sync insert exception:', err?.message || err)
             }
           }
         }
