@@ -40,6 +40,8 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   const [layoutMode, setLayoutMode] = useState<'mindmap' | 'orgchart' | 'list'>('mindmap')
   const isFlowchart = map.map_type === 'flowchart'
   
+  const [collaborators, setCollaborators] = useState<any[]>([])
+
   // Zustand Store
   const { mapTags, setMapTags } = useMapStore()
   const { past, future } = useHistoryStore()
@@ -392,6 +394,25 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                 <div className="w-px h-4 bg-[var(--border)] mx-1"></div>
               </>
             )}
+            {/* Collaborator Avatars */}
+            {collaborators.length > 0 && (
+              <div className="flex items-center -space-x-2 mr-2" title="Colaboradores online">
+                {collaborators.map((c) => (
+                  <div
+                    key={c.user_id}
+                    className="w-7 h-7 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-white text-[10px] font-bold shadow-md relative group cursor-pointer"
+                    style={{ backgroundColor: c.color }}
+                  >
+                    {c.name.substring(0, 2).toUpperCase()}
+                    <div className="absolute top-full mt-1 hidden group-hover:flex flex-col items-center z-50 pointer-events-none">
+                      <div className="bg-gray-900 text-white text-[11px] py-1 px-2 rounded shadow-md whitespace-nowrap">
+                        {c.name} (Online)
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <button 
               onClick={() => setIsShareModalOpen(true)}
               className="text-sm px-3 py-1.5 font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
@@ -419,6 +440,8 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
               setSaveStatus={setSaveStatus}
               theme={theme}
               isReadOnly={isReadOnly}
+              user={user}
+              onCollaboratorsChange={setCollaborators}
             />
           ) : (
             <Canvas 
@@ -441,6 +464,8 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
               updatingSlideId={updatingSlideId}
               setUpdatingSlideId={setUpdatingSlideId}
               isReadOnly={isReadOnly}
+              user={user}
+              onCollaboratorsChange={setCollaborators}
             />
           )}
         </main>

@@ -21,6 +21,7 @@ import CustomNode from './CustomNode'
 import { supabase } from '@/supabase/client'
 import { useMapStore } from '@/store/mapStore'
 import { useHistoryStore } from '@/store/historyStore'
+import { useRealtimeCollab } from '@/hooks/useRealtimeCollab'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -43,7 +44,7 @@ const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
 }
 
-function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, isOutlined, globalLineColor, layoutMode = 'mindmap', theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, updatingSlideId, setUpdatingSlideId, isReadOnly }: any) {
+function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSaveStatus, isColorful, isOutlined, globalLineColor, layoutMode = 'mindmap', theme, presentationMode, slides, setSlides, currentSlideIndex, isCapturingMode, setIsCapturingMode, updatingSlideId, setUpdatingSlideId, isReadOnly, user, onCollaboratorsChange }: any) {
   const { screenToFlowPosition, getNodes, getEdges, fitBounds, fitView, zoomTo, getIntersectingNodes } = useReactFlow()
   const { x: vpX, y: vpY, zoom: vpZoom } = useViewport()
   
@@ -112,6 +113,36 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges)
+
+  const isRemoteUpdate = useRef(false)
+
+  const handleRemoteSync = useCallback(({ nodes: remoteNodes, edges: remoteEdges }: { nodes: Node[]; edges: Edge[] }) => {
+    isRemoteUpdate.current = true
+    setNodes(remoteNodes)
+    setEdges(remoteEdges)
+    setTimeout(() => {
+      isRemoteUpdate.current = false
+    }, 100)
+  }, [setNodes, setEdges])
+
+  const { collaborators, broadcastSync, updatePresenceState } = useRealtimeCollab({
+    mapId,
+    user,
+    onRemoteSync: handleRemoteSync,
+    isReadOnly
+  })
+
+  useEffect(() => {
+    if (onCollaboratorsChange) {
+      onCollaboratorsChange(collaborators)
+    }
+  }, [collaborators, onCollaboratorsChange])
+
+  useEffect(() => {
+    if (!isRemoteUpdate.current && nodes.length > 0) {
+      broadcastSync(nodes, edges)
+    }
+  }, [nodes, edges, broadcastSync])
   
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const lastThumbnailCapture = useRef(0)
@@ -1346,28 +1377,71 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     height: Math.abs(currentPoint.y - startPoint.y)
   } : null
 
+  const finalDisplayNodesWithCollab = useMemo(() => {
+    return finalDisplayNodes.map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        collaborators
+      }
+    }))
+  }, [finalDisplayNodes, collaborators])
+
+  const handlePointerMoveWithPresence = (e: React.PointerEvent) => {
+    handlePointerMove(e)
+    const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+    updatePresenceState({ cursor: flowPos })
+  }
+
   return (
     <div 
-      className="w-full h-full relative" 
+      className="w-full h-full relative overflow-hidden" 
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
+      onPointerMove={handlePointerMoveWithPresence}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
     >
+      {/* Remote Collaborator Cursors */}
+      {collaborators.map((c) => {
+        if (!c.cursor) return null
+        return (
+          <div
+            key={c.user_id}
+            className="absolute pointer-events-none z-50 flex items-center gap-1 transition-all duration-75"
+            style={{
+              transform: `translate(${c.cursor.x * vpZoom + vpX}px, ${c.cursor.y * vpZoom + vpY}px)`,
+              transformOrigin: '0 0'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill={c.color} stroke="#ffffff" strokeWidth="2">
+              <path d="M3 3l7 18 3-7 7-3L3 3z" />
+            </svg>
+            <span
+              className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded shadow-md whitespace-nowrap"
+              style={{ backgroundColor: c.color }}
+            >
+              {c.name}
+            </span>
+          </div>
+        )
+      })}
+
       <ReactFlow
-        nodes={finalDisplayNodes}
+        nodes={finalDisplayNodesWithCollab}
         edges={finalDisplayEdges}
         onNodesChange={onNodesChangeWrapper}
         onEdgesChange={onEdgesChange}
         onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
         nodeTypes={nodeTypes}
         onNodeClick={(_, node) => {
+          updatePresenceState({ activeNodeId: node.id })
           setNodes((nds) => nds.map((n) => ({
             ...n,
             selected: n.id === node.id
           })))
         }}
         onPaneClick={() => {
+          updatePresenceState({ activeNodeId: null })
           setNodes((nds) => nds.map((n) => ({
             ...n,
             selected: false

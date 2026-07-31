@@ -15,14 +15,15 @@ import {
   MarkerType,
   BackgroundVariant,
   ReactFlowProvider,
-  useReactFlow
+  useReactFlow,
+  useViewport
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import FlowchartNode from './FlowchartNode'
 import { MapNode, MapEdge } from '@/types'
-import { useMapStore } from '@/store/mapStore'
 import { supabase } from '@/supabase/client'
-import { Save, MousePointer2, Square, Circle, Triangle, Database, Hexagon, Component, Type } from 'lucide-react'
+import { useRealtimeCollab } from '@/hooks/useRealtimeCollab'
+import { Square, Circle, Type } from 'lucide-react'
 
 const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
 
@@ -34,6 +35,8 @@ type FlowchartCanvasProps = {
   setSaveStatus: (status: 'saved' | 'saving' | 'error') => void
   theme: 'light' | 'dark'
   isReadOnly?: boolean
+  user?: any
+  onCollaboratorsChange?: (collaborators: any[]) => void
 }
 
 function FlowchartCanvasInner({
@@ -42,13 +45,79 @@ function FlowchartCanvasInner({
   initialEdges,
   setSaveStatus,
   theme,
-  isReadOnly = false
+  isReadOnly = false,
+  user,
+  onCollaboratorsChange
 }: FlowchartCanvasProps) {
   const { screenToFlowPosition } = useReactFlow()
+  const { x: vpX, y: vpY, zoom: vpZoom } = useViewport()
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
-  
+
+  const handleDeleteNode = useCallback((id: string) => {
+    if (isReadOnly) return
+    setNodes(nds => nds.filter(n => n.id !== id))
+    setEdges(eds => eds.filter(e => e.source !== id && e.target !== id))
+  }, [isReadOnly])
+
+  const handleNodeChange = useCallback((id: string, text: string) => {
+    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, label: text } } : n))
+  }, [])
+
+  const handleChangeFormatting = useCallback((id: string, format: any) => {
+    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, ...format } } : n))
+  }, [])
+
+  const isRemoteUpdate = useRef(false)
+
+  const handleRemoteSync = useCallback(({ nodes: remoteNodes, edges: remoteEdges }: { nodes: Node[]; edges: Edge[] }) => {
+    isRemoteUpdate.current = true
+    setNodes(remoteNodes.map(rn => ({
+      ...rn,
+      data: {
+        ...rn.data,
+        isReadOnly,
+        onDelete: handleDeleteNode,
+        onChange: handleNodeChange,
+        onChangeFormatting: handleChangeFormatting
+      }
+    })))
+    setEdges(remoteEdges)
+    setTimeout(() => {
+      isRemoteUpdate.current = false
+    }, 100)
+  }, [isReadOnly, handleDeleteNode, handleNodeChange, handleChangeFormatting])
+
+  const { collaborators, broadcastSync, updatePresenceState } = useRealtimeCollab({
+    mapId,
+    user,
+    onRemoteSync: handleRemoteSync,
+    isReadOnly
+  })
+
+  useEffect(() => {
+    if (onCollaboratorsChange) {
+      onCollaboratorsChange(collaborators)
+    }
+  }, [collaborators, onCollaboratorsChange])
+
+  useEffect(() => {
+    if (!isRemoteUpdate.current && nodes.length > 0) {
+      broadcastSync(nodes, edges)
+    }
+  }, [nodes, edges, broadcastSync])
+
+  const nodesWithCollab = useMemo(() => {
+    return nodes.map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        collaborators
+      }
+    }))
+  }, [nodes, collaborators])
+
   // Transform initial DB nodes to React Flow nodes
   useEffect(() => {
     const formattedNodes = initialNodes.map(n => {
@@ -73,13 +142,12 @@ function FlowchartCanvasInner({
       style: { stroke: e.color || '#94a3b8', strokeWidth: 2 }
     }))
     setEdges(formattedEdges)
-  }, [initialNodes, initialEdges, isReadOnly])
+  }, [initialNodes, initialEdges, isReadOnly, handleDeleteNode, handleNodeChange, handleChangeFormatting])
 
   // Keyboard deletion shortcut for selected nodes & edges
   useEffect(() => {
     if (isReadOnly) return
     const handleKeyDown = (e: KeyboardEvent) => {
-      // If typing in input fields, do not trigger deletion
       if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
         return
       }
@@ -93,7 +161,6 @@ function FlowchartCanvasInner({
           
           if (selectedNodes.length > 0) {
             setNodes(nds => nds.filter(n => !n.selected))
-            // Also cleanup connected edges
             const selectedIds = new Set(selectedNodes.map(n => n.id))
             setEdges(eds => eds.filter(e => !selectedIds.has(e.source) && !selectedIds.has(e.target)))
           }
@@ -128,20 +195,6 @@ function FlowchartCanvasInner({
     }
     setEdges((eds) => addEdge(newEdge, eds))
   }, [isReadOnly])
-
-  const handleDeleteNode = useCallback((id: string) => {
-    if (isReadOnly) return
-    setNodes(nds => nds.filter(n => n.id !== id))
-    setEdges(eds => eds.filter(e => e.source !== id && e.target !== id))
-  }, [isReadOnly])
-
-  const handleNodeChange = useCallback((id: string, text: string) => {
-    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, label: text } } : n))
-  }, [])
-
-  const handleChangeFormatting = useCallback((id: string, format: any) => {
-    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, ...format } } : n))
-  }, [])
 
   const onDragStart = (event: React.DragEvent, nodeType: string, shape: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType)
@@ -224,7 +277,7 @@ function FlowchartCanvasInner({
         source: e.source,
         target: e.target,
         color: e.style?.stroke || '#94a3b8',
-        label: `${e.sourceHandle}__${e.targetHandle}` // Hack to store handles
+        label: `${e.sourceHandle}__${e.targetHandle}`
       }))
       
       await supabase.from('nodes').upsert(dbNodes)
@@ -261,8 +314,38 @@ function FlowchartCanvasInner({
     setEdges((eds) => eds.filter((e) => e.id !== edge.id))
   }, [isReadOnly])
 
+  const handlePointerMoveWithPresence = (e: React.PointerEvent) => {
+    const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+    updatePresenceState({ cursor: flowPos })
+  }
+
   return (
-    <div className="flex w-full h-full relative" ref={reactFlowWrapper}>
+    <div className="flex w-full h-full relative overflow-hidden" ref={reactFlowWrapper} onPointerMove={handlePointerMoveWithPresence}>
+      {/* Remote Collaborator Cursors */}
+      {collaborators.map((c) => {
+        if (!c.cursor) return null
+        return (
+          <div
+            key={c.user_id}
+            className="absolute pointer-events-none z-50 flex items-center gap-1 transition-all duration-75"
+            style={{
+              transform: `translate(${c.cursor.x * vpZoom + vpX}px, ${c.cursor.y * vpZoom + vpY}px)`,
+              transformOrigin: '0 0'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill={c.color} stroke="#ffffff" strokeWidth="2">
+              <path d="M3 3l7 18 3-7 7-3L3 3z" />
+            </svg>
+            <span
+              className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded shadow-md whitespace-nowrap"
+              style={{ backgroundColor: c.color }}
+            >
+              {c.name}
+            </span>
+          </div>
+        )
+      })}
+
       {/* Sidebar specific for Flowchart shapes */}
       {!isReadOnly && (
         <div className="absolute left-4 top-4 bottom-4 w-16 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center py-4 gap-4 z-50">
@@ -288,7 +371,7 @@ function FlowchartCanvasInner({
       )}
 
       <ReactFlow
-        nodes={nodes}
+        nodes={nodesWithCollab}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
@@ -296,6 +379,8 @@ function FlowchartCanvasInner({
         onDrop={onDrop}
         onDragOver={onDragOver}
         onEdgeContextMenu={onEdgeContextMenu}
+        onNodeClick={(_, node) => updatePresenceState({ activeNodeId: node.id })}
+        onPaneClick={() => updatePresenceState({ activeNodeId: null })}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         fitView

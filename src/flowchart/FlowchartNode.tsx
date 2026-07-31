@@ -82,6 +82,7 @@ export default function FlowchartNode({ data, selected, id }: NodeProps) {
     }
   }
 
+  const activeCollaborator = (data.collaborators as any[])?.find((c: any) => c.activeNodeId === id)
   const innerContentClass = shape === 'diamond' ? '-rotate-45' : shape === 'parallelogram' ? 'skew-x-12' : ''
   const isText = shape === 'text'
   const borderAndShadow = isText 
@@ -94,9 +95,22 @@ export default function FlowchartNode({ data, selected, id }: NodeProps) {
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
     >
+      {activeCollaborator && (
+        <div
+          className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-lg z-50 flex items-center gap-1 whitespace-nowrap"
+          style={{ backgroundColor: activeCollaborator.color }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+          {activeCollaborator.name}
+        </div>
+      )}
       <div 
         className={`${getShapeClasses()} ${borderAndShadow}`}
-        style={{ backgroundColor: isText ? 'transparent' : bgColor, color: textColor }}
+        style={{
+          backgroundColor: isText ? 'transparent' : bgColor,
+          color: textColor,
+          boxShadow: activeCollaborator ? `0 0 0 3px ${activeCollaborator.color}` : undefined
+        }}
       >
         <div className={`w-full flex items-center justify-center text-center ${innerContentClass}`}>
           {isEditing ? (

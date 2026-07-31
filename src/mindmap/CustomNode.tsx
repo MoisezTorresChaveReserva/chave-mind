@@ -223,6 +223,8 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
     )
   }
 
+  const activeCollaborator = (data.collaborators as any[])?.find((c: any) => c.activeNodeId === id)
+
   return (
     <>
       {/* Context Menu (Only if not read only) */}
@@ -497,7 +499,6 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         </div>,
         document.body
       )}
-
       <div
         className={`
           relative px-2 py-1 rounded-xl flex flex-col items-center justify-center w-max transition-all group
@@ -505,10 +506,22 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           ${selected ? 'ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-gray-900 shadow-md' : ''}
           ${data.isDropTarget ? 'ring-4 ring-green-500 border-dashed scale-110 shadow-2xl z-50 ring-offset-2 dark:ring-offset-gray-900 bg-green-50/50 dark:bg-green-900/30' : ''}
         `}
-        style={customStyle}
+        style={{
+          ...customStyle,
+          boxShadow: activeCollaborator ? `0 0 0 3px ${activeCollaborator.color}` : (customStyle as any).boxShadow
+        }}
         onDoubleClick={onDoubleClick}
         onContextMenu={onContextMenu}
       >
+        {activeCollaborator && (
+          <div
+            className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-lg z-50 flex items-center gap-1 whitespace-nowrap"
+            style={{ backgroundColor: activeCollaborator.color }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            {activeCollaborator.name}
+          </div>
+        )}
         {!isRoot && (
           <Handle
             type="target"
