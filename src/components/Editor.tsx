@@ -49,6 +49,12 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   // Title State
   const [mapTitle, setMapTitle] = useState(map.title)
 
+  // Fix Hydration Mismatch for React Flow
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   const handleTitleBlur = async () => {
     if (isReadOnly) return
     if (mapTitle !== map.title && mapTitle.trim() !== '') {
@@ -431,42 +437,45 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
 
         {/* Canvas Area */}
         <main className={`flex-1 w-full h-full ${presentationMode === 'playing' || isFocusMode ? 'pt-0' : 'pt-14'} transition-all`}>
-          {map.map_type === 'flowchart' ? (
-            <FlowchartCanvas 
-              mapId={map.id} 
-              initialNodes={initialNodes} 
-              initialEdges={initialEdges} 
-              initialNodeTags={initialNodeTags}
-              setSaveStatus={setSaveStatus}
-              theme={theme}
-              isReadOnly={isReadOnly}
-              user={user}
-              onCollaboratorsChange={setCollaborators}
-            />
-          ) : (
-            <Canvas 
-              mapId={map.id} 
-              initialNodes={initialNodes} 
-              initialEdges={initialEdges} 
-              initialNodeTags={initialNodeTags}
-              setSaveStatus={setSaveStatus}
-              isColorful={isColorful}
-              isOutlined={isOutlined}
-              globalLineColor={globalLineColor}
-              layoutMode={layoutMode}
-              theme={theme}
-              presentationMode={presentationMode}
-              slides={slides}
-              setSlides={setSlides}
-              currentSlideIndex={currentSlideIndex}
-              isCapturingMode={isCapturingMode}
-              setIsCapturingMode={setIsCapturingMode}
-              updatingSlideId={updatingSlideId}
-              setUpdatingSlideId={setUpdatingSlideId}
-              isReadOnly={isReadOnly}
-              user={user}
-              onCollaboratorsChange={setCollaborators}
-            />
+          {isMounted && (
+            map.map_type === 'flowchart' ? (
+              <FlowchartCanvas 
+                mapId={map.id} 
+                initialNodes={initialNodes} 
+                initialEdges={initialEdges} 
+                initialNodeTags={initialNodeTags}
+                setSaveStatus={setSaveStatus}
+                theme={theme}
+                isReadOnly={isReadOnly}
+                user={user}
+                onCollaboratorsChange={setCollaborators}
+              />
+            ) : (
+              <Canvas 
+                mapId={map.id} 
+                initialNodes={initialNodes} 
+                initialEdges={initialEdges} 
+                initialMapTags={initialMapTags}
+                initialNodeTags={initialNodeTags}
+                setSaveStatus={setSaveStatus}
+                isColorful={isColorful}
+                isOutlined={isOutlined}
+                globalLineColor={globalLineColor}
+                layoutMode={layoutMode}
+                theme={theme}
+                presentationMode={presentationMode}
+                slides={slides}
+                setSlides={setSlides}
+                currentSlideIndex={currentSlideIndex}
+                isCapturingMode={isCapturingMode}
+                setIsCapturingMode={setIsCapturingMode}
+                updatingSlideId={updatingSlideId}
+                setUpdatingSlideId={setUpdatingSlideId}
+                isReadOnly={isReadOnly}
+                user={user}
+                onCollaboratorsChange={setCollaborators}
+              />
+            )
           )}
         </main>
 
