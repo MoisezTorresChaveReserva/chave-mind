@@ -532,42 +532,6 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             {activeCollaborator.name}
           </div>
         )}
-        {!isRoot && (
-          <Handle
-            type="target"
-            id={targetId}
-            position={targetPosition}
-            className={targetClass}
-            style={{ borderColor: branchColor, ...targetStyle }}
-          />
-        )}
-
-        {!!data.hasChildren && layoutMode === 'mindmap' && (
-          <>
-            <div
-              className={`absolute top-1/2 -translate-y-1/2 z-0`}
-              style={{
-                [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-12px' : '-8px',
-                width: data.childCount === 1 ? '12px' : '8px',
-                height: '3px',
-                backgroundColor: branchColor
-              }}
-            />
-            <button
-              onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
-              onMouseDown={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="nodrag nopan absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
-              style={{
-                [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-28px' : '-16px',
-                borderColor: branchColor
-              }}
-              title={data.collapsed ? "Expandir" : "Recolher"}
-            >
-              {!!data.collapsed && <div className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: branchColor }} />}
-            </button>
-          </>
-        )}
         {!!data.hasChildren && layoutMode === 'orgchart' && (
           <button
             onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
@@ -593,14 +557,8 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           </button>
         )}
 
-        {isRoot ? (
+        {isRoot && (layoutMode === 'orgchart' || layoutMode === 'list') && (
           <>
-            {layoutMode === 'mindmap' && (
-              <>
-                <Handle type="source" position={Position.Right} id="right" className="opacity-0" style={{ right: '0px', top: '50%' }} isConnectable={false} />
-                <Handle type="source" position={Position.Left} id="left" className="opacity-0" style={{ left: '0px', top: '50%' }} isConnectable={false} />
-              </>
-            )}
             {layoutMode === 'orgchart' && (
                <Handle type="source" position={Position.Bottom} id="bottom" className="opacity-0" style={{ left: '50%', bottom: '0px' }} isConnectable={false} />
             )}
@@ -608,15 +566,26 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                <Handle type="source" position={Position.Bottom} id="bottom" className="opacity-0" style={{ left: '20px', bottom: '0px' }} isConnectable={false} />
             )}
           </>
-        ) : (
-          <Handle
-            type="source"
-            id={sourceId}
-            position={sourcePosition}
-            className="opacity-0"
-            style={sourceStyle}
-            isConnectable={false}
-          />
+        )}
+
+        {!isRoot && (layoutMode === 'orgchart' || layoutMode === 'list') && (
+          <>
+            <Handle
+              type="target"
+              id={targetId}
+              position={targetPosition}
+              className={targetClass}
+              style={{ borderColor: branchColor, ...targetStyle }}
+            />
+            <Handle
+              type="source"
+              id={sourceId}
+              position={sourcePosition}
+              className="opacity-0"
+              style={sourceStyle}
+              isConnectable={false}
+            />
+          </>
         )}
 
         {!!data.image_url && (
@@ -624,8 +593,63 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         )}
 
         <div className="flex flex-col w-full relative z-10">
-          {/* Main Content Row (Text) */}
+          {/* Main Content Row (Text + Handles aligned to text level) */}
           <div className="relative flex items-center justify-center w-full min-h-[28px]">
+            {!isRoot && layoutMode === 'mindmap' && (
+              <Handle
+                type="target"
+                id={targetId}
+                position={targetPosition}
+                className={targetClass}
+                style={{ borderColor: branchColor, ...targetStyle }}
+              />
+            )}
+
+            {!!data.hasChildren && layoutMode === 'mindmap' && (
+              <>
+                <div
+                  className={`absolute top-1/2 -translate-y-1/2 z-0`}
+                  style={{
+                    [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-12px' : '-8px',
+                    width: data.childCount === 1 ? '12px' : '8px',
+                    height: '3px',
+                    backgroundColor: branchColor
+                  }}
+                />
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (typeof data.onToggleCollapse === 'function') data.onToggleCollapse(id) }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="nodrag nopan absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
+                  style={{
+                    [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-28px' : '-16px',
+                    borderColor: branchColor
+                  }}
+                  title={data.collapsed ? "Expandir" : "Recolher"}
+                >
+                  {!!data.collapsed && <div className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: branchColor }} />}
+                </button>
+              </>
+            )}
+
+            {isRoot && layoutMode === 'mindmap' && (
+              <>
+                <Handle type="source" position={Position.Right} id="right" className="opacity-0" style={{ right: '0px', top: '50%' }} isConnectable={false} />
+                <Handle type="source" position={Position.Left} id="left" className="opacity-0" style={{ left: '0px', top: '50%' }} isConnectable={false} />
+              </>
+            )}
+
+            {!isRoot && layoutMode === 'mindmap' && (
+              <Handle
+                type="source"
+                id={sourceId}
+                position={sourcePosition}
+                className="opacity-0"
+                style={sourceStyle}
+                isConnectable={false}
+              />
+            )}
+
             {!!data.icon && <span className="text-lg">{data.icon as string}</span>}
 
             {isEditing ? (
