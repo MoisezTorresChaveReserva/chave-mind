@@ -122,6 +122,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       id: n.id,
       type: n.type,
       position: { x: n.position.x, y: n.position.y },
+      measured: n.measured,
       data: {
         label: n.data.label,
         parent_id: n.data.parent_id,
@@ -148,65 +149,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     return { nodes: cleanNodes, edges: cleanEdges }
   }, [])
 
-  const handleRemoteSync = useCallback(({ nodes: remoteNodes, edges: remoteEdges }: { nodes: Node[]; edges: Edge[] }) => {
-    isRemoteUpdate.current = true
-    
-    setNodes((currentNodes) => {
-      // Create a map of current node collapsed states to preserve them locally
-      const localCollapsedState = new Map(currentNodes.map(n => [n.id, n.data.collapsed]))
-      
-      const mergedNodes = remoteNodes.map(rn => ({
-        ...rn,
-        data: {
-          ...rn.data,
-          // If the node existed locally, keep its local collapsed state instead of the remote one
-          collapsed: localCollapsedState.has(rn.id) ? localCollapsedState.get(rn.id) : rn.data.collapsed
-        }
-      }))
 
-      // Recalculate layout based on the local collapsed state to avoid overlaps from remote positions
-      if (layoutMode !== 'free') {
-        return applyAutoLayout(mergedNodes as Node[], layoutMode)
-      }
-      return mergedNodes as Node[]
-    })
-
-    setEdges(remoteEdges)
-    setTimeout(() => {
-      isRemoteUpdate.current = false
-    }, 500)
-  }, [setNodes, setEdges, applyAutoLayout, layoutMode])
-
-  const { collaborators, broadcastSync, updatePresenceState } = useRealtimeCollab({
-    mapId,
-    user,
-    onRemoteSync: handleRemoteSync,
-    isReadOnly
-  })
-
-  useEffect(() => {
-    if (onCollaboratorsChange) {
-      onCollaboratorsChange(collaborators)
-    }
-  }, [collaborators, onCollaboratorsChange])
-
-  // Debounced broadcast - only send after 300ms of no changes, and never during remote updates
-  const broadcastTimerRef = useRef<NodeJS.Timeout | null>(null)
-  useEffect(() => {
-    if (isRemoteUpdate.current || nodes.length === 0) return
-    
-    if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current)
-    broadcastTimerRef.current = setTimeout(() => {
-      if (!isRemoteUpdate.current) {
-        const { nodes: cleanNodes, edges: cleanEdges } = serializeForBroadcast(nodes, edges)
-        broadcastSync(cleanNodes as Node[], cleanEdges as Edge[])
-      }
-    }, 300)
-    
-    return () => {
-      if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current)
-    }
-  }, [nodes, edges, broadcastSync, serializeForBroadcast])
   
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const lastThumbnailCapture = useRef(0)
@@ -556,6 +499,69 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       return { ...n, data: { ...n.data, direction: dir } }
     })
   }, [layoutMode])
+  const handleRemoteSync = useCallback(({ nodes: remoteNodes, edges: remoteEdges }: { nodes: Node[]; edges: Edge[] }) => {
+    isRemoteUpdate.current = true
+    
+    setNodes((currentNodes) => {
+      // Create a map of current node collapsed states to preserve them locally
+      const localCollapsedState = new Map(currentNodes.map(n => [n.id, n.data.collapsed]))
+      
+      const mergedNodes = remoteNodes.map(rn => {
+        const localNode = currentNodes.find(n => n.id === rn.id)
+        return {
+          ...rn,
+          measured: rn.measured || localNode?.measured,
+          data: {
+            ...rn.data,
+            // If the node existed locally, keep its local collapsed state instead of the remote one
+            collapsed: localCollapsedState.has(rn.id) ? localCollapsedState.get(rn.id) : rn.data.collapsed
+          }
+        }
+      })
+
+      // Recalculate layout based on the local collapsed state to avoid overlaps from remote positions
+      if (layoutMode !== 'free') {
+        return applyAutoLayout(mergedNodes as Node[], layoutMode)
+      }
+      return mergedNodes as Node[]
+    })
+
+    setEdges(remoteEdges)
+    setTimeout(() => {
+      isRemoteUpdate.current = false
+    }, 500)
+  }, [setNodes, setEdges, applyAutoLayout, layoutMode])
+
+  const { collaborators, broadcastSync, updatePresenceState } = useRealtimeCollab({
+    mapId,
+    user,
+    onRemoteSync: handleRemoteSync,
+    isReadOnly
+  })
+
+  useEffect(() => {
+    if (onCollaboratorsChange) {
+      onCollaboratorsChange(collaborators)
+    }
+  }, [collaborators, onCollaboratorsChange])
+
+  // Debounced broadcast - only send after 300ms of no changes, and never during remote updates
+  const broadcastTimerRef = useRef<NodeJS.Timeout | null>(null)
+  useEffect(() => {
+    if (isRemoteUpdate.current || nodes.length === 0) return
+    
+    if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current)
+    broadcastTimerRef.current = setTimeout(() => {
+      if (!isRemoteUpdate.current) {
+        const { nodes: cleanNodes, edges: cleanEdges } = serializeForBroadcast(nodes, edges)
+        broadcastSync(cleanNodes as Node[], cleanEdges as Edge[])
+      }
+    }, 300)
+    
+    return () => {
+      if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current)
+    }
+  }, [nodes, edges, broadcastSync, serializeForBroadcast])
 
   // Presentation Player Engine
   useEffect(() => {
@@ -1446,7 +1452,6 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       ...n,
       data: {
         ...n.data,
-        activeCollaborator: collaborators.find(c => c.activeNodeId === n.id),
         collaborators
       }
     }))
