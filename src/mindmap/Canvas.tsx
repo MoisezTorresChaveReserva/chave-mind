@@ -116,13 +116,45 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
   const isRemoteUpdate = useRef(false)
 
+  // Strip non-serializable data (callbacks, React Flow internals) from nodes before broadcasting
+  const serializeForBroadcast = useCallback((currentNodes: Node[], currentEdges: Edge[]) => {
+    const cleanNodes = currentNodes.map(n => ({
+      id: n.id,
+      type: n.type,
+      position: { x: n.position.x, y: n.position.y },
+      data: {
+        label: n.data.label,
+        parent_id: n.data.parent_id,
+        collapsed: n.data.collapsed,
+        mapId: n.data.mapId,
+        direction: n.data.direction,
+        bg_color: n.data.bg_color,
+        text_color: n.data.text_color,
+        image_url: n.data.image_url,
+        icon: n.data.icon,
+        link_url: n.data.link_url,
+        has_text_border: n.data.has_text_border,
+        tags: n.data.tags,
+      }
+    }))
+    const cleanEdges = currentEdges.map(e => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      type: e.type || 'bezier',
+      animated: e.animated,
+      style: e.style ? { stroke: e.style.stroke, strokeWidth: e.style.strokeWidth } : undefined
+    }))
+    return { nodes: cleanNodes, edges: cleanEdges }
+  }, [])
+
   const handleRemoteSync = useCallback(({ nodes: remoteNodes, edges: remoteEdges }: { nodes: Node[]; edges: Edge[] }) => {
     isRemoteUpdate.current = true
     setNodes(remoteNodes)
     setEdges(remoteEdges)
     setTimeout(() => {
       isRemoteUpdate.current = false
-    }, 100)
+    }, 500)
   }, [setNodes, setEdges])
 
   const { collaborators, broadcastSync, updatePresenceState } = useRealtimeCollab({
@@ -138,11 +170,23 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
   }, [collaborators, onCollaboratorsChange])
 
+  // Debounced broadcast - only send after 300ms of no changes, and never during remote updates
+  const broadcastTimerRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => {
-    if (!isRemoteUpdate.current && nodes.length > 0) {
-      broadcastSync(nodes, edges)
+    if (isRemoteUpdate.current || nodes.length === 0) return
+    
+    if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current)
+    broadcastTimerRef.current = setTimeout(() => {
+      if (!isRemoteUpdate.current) {
+        const { nodes: cleanNodes, edges: cleanEdges } = serializeForBroadcast(nodes, edges)
+        broadcastSync(cleanNodes as Node[], cleanEdges as Edge[])
+      }
+    }, 300)
+    
+    return () => {
+      if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current)
     }
-  }, [nodes, edges, broadcastSync])
+  }, [nodes, edges, broadcastSync, serializeForBroadcast])
   
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const lastThumbnailCapture = useRef(0)
