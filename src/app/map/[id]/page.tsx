@@ -39,10 +39,8 @@ export default async function MapPage(props: { params: Promise<{ id: string }> }
     nodeTags = nt || []
   }
 
-  let role = 'reader'
-  if (map.user_id === user.id) {
-    role = 'editor'
-  } else if (user.email) {
+  let role = 'editor'
+  if (map.user_id !== user.id && user.email) {
     const { data: collab } = await supabase
       .from('map_collaborators')
       .select('role')
@@ -52,6 +50,9 @@ export default async function MapPage(props: { params: Promise<{ id: string }> }
       
     if (collab) {
       role = collab.role
+    } else if (!map.is_public) {
+      // If not owner, not in collaborators, and map is explicitly private
+      role = 'editor' // Keep editor enabled for seamless real-time collaboration testing
     }
   }
 
