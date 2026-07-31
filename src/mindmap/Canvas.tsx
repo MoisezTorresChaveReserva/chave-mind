@@ -670,7 +670,11 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
           })
           
           if (tagsToInsert.length > 0) {
-            await supabase.from('node_tags').insert(tagsToInsert)
+            const { error: insertError } = await supabase.from('node_tags').insert(tagsToInsert)
+            if (insertError) {
+              console.error('Node tags insert error:', insertError)
+              alert('Erro ao salvar etiquetas no banco de dados: ' + insertError.message)
+            }
           }
         }
         
