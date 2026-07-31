@@ -71,6 +71,33 @@ function FlowchartCanvasInner({
 
   const isRemoteUpdate = useRef(false)
 
+  // Strip non-serializable data before broadcasting
+  const serializeForBroadcast = useCallback((currentNodes: Node[], currentEdges: Edge[]) => {
+    const cleanNodes = currentNodes.map(n => ({
+      id: n.id,
+      type: n.type,
+      position: { x: n.position.x, y: n.position.y },
+      data: {
+        label: n.data.label,
+        shape: n.data.shape,
+        bg_color: n.data.bg_color,
+        text_color: n.data.text_color,
+      }
+    }))
+    const cleanEdges = currentEdges.map(e => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle,
+      targetHandle: e.targetHandle,
+      type: e.type || 'smoothstep',
+      animated: e.animated,
+      markerEnd: e.markerEnd,
+      style: e.style ? { stroke: e.style.stroke, strokeWidth: e.style.strokeWidth } : undefined
+    }))
+    return { nodes: cleanNodes, edges: cleanEdges }
+  }, [])
+
   const handleRemoteSync = useCallback(({ nodes: remoteNodes, edges: remoteEdges }: { nodes: Node[]; edges: Edge[] }) => {
     isRemoteUpdate.current = true
     setNodes(remoteNodes.map(rn => ({
@@ -86,7 +113,7 @@ function FlowchartCanvasInner({
     setEdges(remoteEdges)
     setTimeout(() => {
       isRemoteUpdate.current = false
-    }, 100)
+    }, 500)
   }, [isReadOnly, handleDeleteNode, handleNodeChange, handleChangeFormatting])
 
   const { collaborators, broadcastSync, updatePresenceState } = useRealtimeCollab({
@@ -102,11 +129,22 @@ function FlowchartCanvasInner({
     }
   }, [collaborators, onCollaboratorsChange])
 
+  const broadcastTimerRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => {
-    if (!isRemoteUpdate.current && nodes.length > 0) {
-      broadcastSync(nodes, edges)
+    if (isRemoteUpdate.current || nodes.length === 0) return
+    
+    if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current)
+    broadcastTimerRef.current = setTimeout(() => {
+      if (!isRemoteUpdate.current) {
+        const { nodes: cleanNodes, edges: cleanEdges } = serializeForBroadcast(nodes, edges)
+        broadcastSync(cleanNodes as Node[], cleanEdges as Edge[])
+      }
+    }, 300)
+    
+    return () => {
+      if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current)
     }
-  }, [nodes, edges, broadcastSync])
+  }, [nodes, edges, broadcastSync, serializeForBroadcast])
 
   const nodesWithCollab = useMemo(() => {
     return nodes.map(n => ({
