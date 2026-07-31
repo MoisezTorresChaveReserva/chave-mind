@@ -666,17 +666,25 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
           // Insert current tags
           const tagsToInsert: any[] = []
           currentNodes.forEach(n => {
-            const tags = (n.data.tags as string[]) || []
+            const tags = Array.from(new Set((n.data.tags as string[]) || []))
             tags.forEach(tId => {
-              tagsToInsert.push({ node_id: n.id, tag_id: tId })
+              if (tId) {
+                // Ensure we don't have undefined values which could cause supabase-js to throw a local Error (which stringifies to {})
+                tagsToInsert.push({ node_id: n.id, tag_id: tId })
+              }
             })
           })
           
           if (tagsToInsert.length > 0) {
-            const { error: insertError } = await supabase.from('node_tags').insert(tagsToInsert)
-            if (insertError) {
-              console.error('Node tags insert error:', insertError)
-              alert('Erro ao salvar etiquetas no banco de dados: ' + insertError.message)
+            try {
+              const { error: insertError } = await supabase.from('node_tags').insert(tagsToInsert)
+              if (insertError) {
+                console.error('Node tags insert error details:', insertError)
+                alert('Erro ao salvar etiquetas: ' + (insertError.message || JSON.stringify(insertError)))
+              }
+            } catch (err: any) {
+              console.error('Exception inserting node tags:', err)
+              alert('Exceção ao salvar etiquetas: ' + (err.message || String(err)))
             }
           }
         }
