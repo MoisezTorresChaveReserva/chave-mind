@@ -47,7 +47,7 @@ export function useRealtimeCollab({
 }: {
   mapId: string
   user: any
-  onRemoteSync?: (data: { nodes: Node[]; edges: Edge[] }) => void
+  onRemoteSync?: (data: { nodes: Node[]; edges: Edge[]; mapTags?: any[] }) => void
   isReadOnly?: boolean
 }) {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
@@ -116,7 +116,7 @@ export function useRealtimeCollab({
         console.log('[Collab] Received broadcast from:', payload?.sessionId, '(my id:', sessionId.current, ')')
         if (payload && payload.sessionId !== sessionId.current && onRemoteSyncRef.current) {
           console.log('[Collab] Applying remote sync -', payload.nodes?.length, 'nodes,', payload.edges?.length, 'edges')
-          onRemoteSyncRef.current({ nodes: payload.nodes, edges: payload.edges })
+          onRemoteSyncRef.current({ nodes: payload.nodes, edges: payload.edges, mapTags: payload.mapTags })
         }
       })
       .subscribe(async (status) => {
@@ -149,7 +149,7 @@ export function useRealtimeCollab({
 
   // Broadcast node/edge changes to other clients
   const broadcastSync = useCallback(
-    async (nodes: Node[], edges: Edge[]) => {
+    async (nodes: Node[], edges: Edge[], mapTags?: any[]) => {
       if (!channelRef.current || !isSubscribedRef.current || isReadOnly) {
         return
       }
@@ -162,7 +162,8 @@ export function useRealtimeCollab({
             sessionId: sessionId.current,
             senderId: user?.id || sessionId.current,
             nodes,
-            edges
+            edges,
+            mapTags
           }
         })
         console.log('[Collab] Broadcast sent:', result, '- nodes:', nodes.length, 'edges:', edges.length)
