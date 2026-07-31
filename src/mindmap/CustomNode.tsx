@@ -76,6 +76,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   const isRoot = data.isRoot as boolean
   const isReadOnly = data.isReadOnly as boolean
   const layoutMode = (data.layoutMode as string) || 'mindmap'
+  const activeCollaborator = data.activeCollaborator || (data.collaborators as any[])?.find((c: any) => c.activeNodeId === id)
 
   // Handle configuration based on layout mode
   let targetPosition = data.direction === 'left' ? Position.Right : Position.Left

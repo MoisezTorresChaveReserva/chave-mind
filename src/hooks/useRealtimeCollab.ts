@@ -5,6 +5,7 @@ import { supabase } from '@/supabase/client'
 import { Node, Edge } from '@xyflow/react'
 
 export interface Collaborator {
+  session_id: string
   user_id: string
   name: string
   email: string
@@ -27,15 +28,17 @@ const COLLAB_COLORS = [
   '#e11d48'  // rose
 ]
 
-export function getUserColor(userId: string): string {
-  if (!userId) return COLLAB_COLORS[0]
+export function getUserColor(id: string): string {
+  if (!id) return COLLAB_COLORS[0]
   let hash = 0
-  for (let i = 0; i < userId.length; i++) {
-    hash = userId.charCodeAt(i) + ((hash << 5) - hash)
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash)
   }
   const index = Math.abs(hash) % COLLAB_COLORS.length
   return COLLAB_COLORS[index]
 }
+
+const generateSessionId = () => Math.random().toString(36).substring(2, 9)
 
 export function useRealtimeCollab({
   mapId,
@@ -51,28 +54,27 @@ export function useRealtimeCollab({
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const channelRef = useRef<any>(null)
   const isSubscribedRef = useRef<boolean>(false)
+  const sessionId = useRef<string>(generateSessionId())
   const onRemoteSyncRef = useRef(onRemoteSync)
   
   useEffect(() => {
     onRemoteSyncRef.current = onRemoteSync
   }, [onRemoteSync])
 
-  const userColor = useRef<string>(getUserColor(user?.id || 'guest'))
+  const userColor = useRef<string>(getUserColor(user?.id ? user.id + sessionId.current : sessionId.current))
   const userName = useRef<string>(
     user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário'
   )
 
   useEffect(() => {
-    if (!mapId || !user?.id) return
-
-    console.log(`[RealtimeCollab] Conectando ao canal map_${mapId} como ${userName.current} (${user.id})`)
+    if (!mapId) return
 
     const channelName = `map_${mapId}`
     const channel = supabase.channel(channelName, {
       config: {
         broadcast: { self: false },
         presence: {
-          key: user.id
+          key: sessionId.current
         }
       }
     })
@@ -82,19 +84,19 @@ export function useRealtimeCollab({
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState()
-        console.log('[RealtimeCollab] Presence state update:', state)
         const activeUsers: Collaborator[] = []
 
         Object.keys(state).forEach((key) => {
           const presences = state[key] as any[]
           if (presences && presences.length > 0) {
             const p = presences[presences.length - 1]
-            if (p.user_id !== user.id) {
+            if (p.session_id !== sessionId.current) {
               activeUsers.push({
+                session_id: p.session_id,
                 user_id: p.user_id,
                 name: p.name,
                 email: p.email,
-                color: p.color || getUserColor(p.user_id),
+                color: p.color || getUserColor(p.session_id),
                 activeNodeId: p.activeNodeId || null,
                 cursor: p.cursor || null,
                 lastActive: Date.now()
@@ -105,25 +107,18 @@ export function useRealtimeCollab({
 
         setCollaborators(activeUsers)
       })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        console.log('[RealtimeCollab] Usuário entrou:', key, newPresences)
-      })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        console.log('[RealtimeCollab] Usuário saiu:', key, leftPresences)
-      })
       .on('broadcast', { event: 'nodes_edges_sync' }, ({ payload }) => {
-        console.log('[RealtimeCollab] Broadcast recebido:', payload)
-        if (payload && payload.senderId !== user.id && onRemoteSyncRef.current) {
+        if (payload && payload.sessionId !== sessionId.current && onRemoteSyncRef.current) {
           onRemoteSyncRef.current({ nodes: payload.nodes, edges: payload.edges })
         }
       })
       .on('broadcast', { event: 'presence_update' }, ({ payload }) => {
-        if (payload && payload.user_id !== user.id) {
+        if (payload && payload.session_id !== sessionId.current) {
           setCollaborators((prev) => {
-            const existingIndex = prev.findIndex((c) => c.user_id === payload.user_id)
+            const existingIndex = prev.findIndex((c) => c.session_id === payload.session_id)
             if (existingIndex >= 0) {
               return prev.map((c) =>
-                c.user_id === payload.user_id
+                c.session_id === payload.session_id
                   ? {
                       ...c,
                       activeNodeId: payload.activeNodeId !== undefined ? payload.activeNodeId : c.activeNodeId,
@@ -134,10 +129,11 @@ export function useRealtimeCollab({
               )
             }
             return [...prev, {
+              session_id: payload.session_id,
               user_id: payload.user_id,
               name: payload.name || 'Colaborador',
               email: payload.email || '',
-              color: getUserColor(payload.user_id),
+              color: getUserColor(payload.session_id),
               activeNodeId: payload.activeNodeId,
               cursor: payload.cursor
             }]
@@ -145,7 +141,6 @@ export function useRealtimeCollab({
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'nodes', filter: `map_id=eq.${mapId}` }, async () => {
-        console.log('[RealtimeCollab] Mudança detectada na tabela nodes no Supabase DB!')
         if (onRemoteSyncRef.current) {
           const { data: dbNodes } = await supabase.from('nodes').select('*').eq('map_id', mapId).order('order', { ascending: true })
           const { data: dbEdges } = await supabase.from('edges').select('*').eq('map_id', mapId)
@@ -180,13 +175,13 @@ export function useRealtimeCollab({
         }
       })
       .subscribe(async (status) => {
-        console.log(`[RealtimeCollab] Status da conexão Realtime: ${status}`)
         if (status === 'SUBSCRIBED') {
           isSubscribedRef.current = true
           await channel.track({
-            user_id: user.id,
+            session_id: sessionId.current,
+            user_id: user?.id || sessionId.current,
             name: userName.current,
-            email: user.email || '',
+            email: user?.email || '',
             color: userColor.current,
             activeNodeId: null,
             cursor: null
@@ -197,7 +192,6 @@ export function useRealtimeCollab({
       })
 
     return () => {
-      console.log(`[RealtimeCollab] Desconectando do canal map_${mapId}`)
       channel.unsubscribe()
       channelRef.current = null
       isSubscribedRef.current = false
@@ -208,12 +202,12 @@ export function useRealtimeCollab({
   const broadcastSync = useCallback(
     (nodes: Node[], edges: Edge[]) => {
       if (!channelRef.current || isReadOnly) return
-      console.log('[RealtimeCollab] Enviando Broadcast de Sync:', nodes.length, 'nós')
       channelRef.current.send({
         type: 'broadcast',
         event: 'nodes_edges_sync',
         payload: {
-          senderId: user.id,
+          sessionId: sessionId.current,
+          senderId: user?.id || sessionId.current,
           nodes,
           edges
         }
@@ -229,9 +223,10 @@ export function useRealtimeCollab({
       
       if (isSubscribedRef.current) {
         channelRef.current.track({
-          user_id: user.id,
+          session_id: sessionId.current,
+          user_id: user?.id || sessionId.current,
           name: userName.current,
-          email: user.email || '',
+          email: user?.email || '',
           color: userColor.current,
           activeNodeId: data.activeNodeId !== undefined ? data.activeNodeId : null,
           cursor: data.cursor !== undefined ? data.cursor : null
@@ -242,9 +237,10 @@ export function useRealtimeCollab({
         type: 'broadcast',
         event: 'presence_update',
         payload: {
-          user_id: user.id,
+          session_id: sessionId.current,
+          user_id: user?.id || sessionId.current,
           name: userName.current,
-          email: user.email || '',
+          email: user?.email || '',
           activeNodeId: data.activeNodeId,
           cursor: data.cursor
         }
@@ -257,6 +253,7 @@ export function useRealtimeCollab({
     collaborators,
     broadcastSync,
     updatePresenceState,
-    myColor: userColor.current
+    myColor: userColor.current,
+    sessionId: sessionId.current
   }
 }

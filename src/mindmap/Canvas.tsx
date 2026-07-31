@@ -1382,6 +1382,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       ...n,
       data: {
         ...n.data,
+        activeCollaborator: collaborators.find(c => c.activeNodeId === n.id),
         collaborators
       }
     }))
@@ -1406,7 +1407,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         if (!c.cursor) return null
         return (
           <div
-            key={c.user_id}
+            key={c.session_id || c.user_id}
             className="absolute pointer-events-none z-50 flex items-center gap-1 transition-all duration-75"
             style={{
               transform: `translate(${c.cursor.x * vpZoom + vpX}px, ${c.cursor.y * vpZoom + vpY}px)`,
