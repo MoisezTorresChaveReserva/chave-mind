@@ -65,6 +65,8 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
         await supabase.auth.updateUser({
           data: { avatar_url: dataUrl }
         })
+        
+        router.refresh() // Bust Next.js client-side cache so maps get the updated user object
       }
       img.src = event.target?.result as string
     }
