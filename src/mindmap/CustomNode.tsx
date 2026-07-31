@@ -85,7 +85,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   
   let sourcePosition = data.direction === 'left' ? Position.Left : Position.Right
   let sourceId = data.direction === 'left' ? 'left' : 'right'
-  let sourceStyle: any = { [data.direction === 'left' ? 'left' : 'right']: data.hasChildren ? (data.childCount === 1 ? '-28px' : '-16px') : '0px', top: '50%' }
+  let sourceStyle: any = { [data.direction === 'left' ? 'left' : 'right']: data.hasChildren ? '-22px' : '0px', top: '50%' }
 
   if (layoutMode === 'orgchart') {
     targetPosition = Position.Top
@@ -610,8 +610,8 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                 <div
                   className={`absolute top-1/2 -translate-y-1/2 z-0`}
                   style={{
-                    [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-12px' : '-8px',
-                    width: data.childCount === 1 ? '12px' : '8px',
+                    [data.direction === 'left' ? 'left' : 'right']: '-14px',
+                    width: '14px',
                     height: '3px',
                     backgroundColor: branchColor
                   }}
@@ -622,7 +622,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                   onPointerDown={(e) => e.stopPropagation()}
                   className="nodrag nopan absolute top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full flex items-center justify-center z-20 cursor-pointer bg-white dark:bg-gray-800 transition-transform hover:scale-110 shadow-sm border-[2px]"
                   style={{
-                    [data.direction === 'left' ? 'left' : 'right']: data.childCount === 1 ? '-28px' : '-16px',
+                    [data.direction === 'left' ? 'left' : 'right']: '-22px',
                     borderColor: branchColor
                   }}
                   title={data.collapsed ? "Expandir" : "Recolher"}
@@ -662,13 +662,13 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                 onBlur={onBlur}
                 onMouseDown={(e) => e.stopPropagation()}
                 onDoubleClick={(e) => e.stopPropagation()}
-                className={`nodrag nopan outline-none bg-transparent text-left w-full min-w-[80px] ${isRoot
+                className={`nodrag nopan outline-none bg-transparent text-left w-full min-w-[80px] px-2 ${isRoot
                   ? 'text-[42px] font-bold tracking-tight text-slate-800'
                   : 'text-[18px] font-normal'}`}
                 style={{ color: customText || 'inherit' }}
               />
             ) : (
-              <span className={`select-none text-left ${customText ? '' : 'text-gray-800 dark:text-gray-100'} ${isRoot ? 'font-medium text-xl uppercase' : 'font-normal text-[16px]'}`} style={{ color: customText || 'inherit' }}>
+              <span className={`select-none text-left px-2 ${customText ? '' : 'text-gray-800 dark:text-gray-100'} ${isRoot ? 'font-medium text-xl uppercase' : 'font-normal text-[16px]'}`} style={{ color: customText || 'inherit' }}>
                 {text || 'Novo Nó'}
               </span>
             )}
