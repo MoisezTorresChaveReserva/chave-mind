@@ -86,12 +86,14 @@ export function useRealtimeCollab({
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState()
+        console.log('[Collab] Presence sync triggered. Raw state:', JSON.stringify(state))
         const activeUsers: Collaborator[] = []
 
         Object.keys(state).forEach((key) => {
           const presences = state[key] as any[]
           if (presences && presences.length > 0) {
             const p = presences[presences.length - 1]
+            console.log('[Collab] Found presence for key:', key, 'payload:', p)
             if (p.session_id !== sessionId.current) {
               activeUsers.push({
                 session_id: p.session_id,
@@ -103,11 +105,13 @@ export function useRealtimeCollab({
                 cursor: p.cursor || null,
                 lastActive: Date.now()
               })
+            } else {
+              console.log('[Collab] Ignoring own presence (sessionId matches)')
             }
           }
         })
 
-        console.log('[Collab] Presence sync - online users:', activeUsers.length)
+        console.log('[Collab] Active users (excluding self):', activeUsers.length)
         setCollaborators(activeUsers)
       })
       .on('broadcast', { event: 'nodes_edges_sync' }, ({ payload }) => {
