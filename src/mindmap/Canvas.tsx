@@ -150,7 +150,21 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
   const handleRemoteSync = useCallback(({ nodes: remoteNodes, edges: remoteEdges }: { nodes: Node[]; edges: Edge[] }) => {
     isRemoteUpdate.current = true
-    setNodes(remoteNodes)
+    
+    setNodes((currentNodes) => {
+      // Create a map of current node collapsed states to preserve them locally
+      const localCollapsedState = new Map(currentNodes.map(n => [n.id, n.data.collapsed]))
+      
+      return remoteNodes.map(rn => ({
+        ...rn,
+        data: {
+          ...rn.data,
+          // If the node existed locally, keep its local collapsed state instead of the remote one
+          collapsed: localCollapsedState.has(rn.id) ? localCollapsedState.get(rn.id) : rn.data.collapsed
+        }
+      }))
+    })
+
     setEdges(remoteEdges)
     setTimeout(() => {
       isRemoteUpdate.current = false
