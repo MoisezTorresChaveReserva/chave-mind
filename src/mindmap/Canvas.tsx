@@ -884,7 +884,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
   const prevDimensions = useRef<{ [id: string]: { width: number; height: number } }>({})
   const layoutTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Auto-layout on dimension changes (e.g. text edit) without infinite loop
+  // Auto-layout on actual text dimension changes without triggering on selection ring changes
   const onNodesChangeWrapper = useCallback((changes: any[]) => {
     onNodesChange(changes)
     
@@ -892,7 +892,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     changes.forEach(c => {
       if (c.type === 'dimensions' && c.dimensions) {
         const prev = prevDimensions.current[c.id]
-        if (!prev || Math.abs(prev.width - c.dimensions.width) > 2 || Math.abs(prev.height - c.dimensions.height) > 2) {
+        // Ignore minor dimension changes (< 8px) caused by selection outlines/rings/shadows
+        if (!prev || Math.abs(prev.width - c.dimensions.width) > 8 || Math.abs(prev.height - c.dimensions.height) > 8) {
           prevDimensions.current[c.id] = { width: c.dimensions.width, height: c.dimensions.height }
           hasActualDimensionChange = true
         }
@@ -903,7 +904,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current)
       layoutTimeoutRef.current = setTimeout(() => {
         setNodes(nds => applyAutoLayout(nds))
-      }, 150)
+      }, 200)
     }
   }, [onNodesChange, setNodes, applyAutoLayout])
 
@@ -1518,10 +1519,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
         nodeTypes={nodeTypes}
         onNodeClick={(_, node) => {
-          setNodes((nds) => nds.map((n) => ({
-            ...n,
-            selected: n.id === node.id
-          })))
+          // Allow React Flow native selection handling
         }}
         onPaneClick={() => {
           setNodes((nds) => nds.map((n) => ({ ...n, selected: false })))
