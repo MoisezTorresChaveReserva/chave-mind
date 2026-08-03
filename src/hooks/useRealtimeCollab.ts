@@ -133,9 +133,15 @@ export function useRealtimeCollab({
             avatar_url: user?.user_metadata?.avatar_url || null
           })
           console.log('[Collab] ✓ Presence tracked successfully')
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          isSubscribedRef.current = false
+          console.warn('[Collab] ✗ Channel subscription error or timeout. Retrying in 2 seconds...')
+          setTimeout(() => {
+            if (channelRef.current) channelRef.current.subscribe()
+          }, 2000)
         } else {
           isSubscribedRef.current = false
-          console.log('[Collab] ✗ Channel NOT subscribed, status:', status)
+          console.log('[Collab] ✗ Channel status:', status)
         }
       })
 

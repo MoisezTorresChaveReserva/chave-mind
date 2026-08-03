@@ -45,8 +45,8 @@ export default async function MapPage(props: { params: Promise<{ id: string }> }
       .from('map_collaborators')
       .select('role')
       .eq('map_id', params.id)
-      .eq('email', user.email)
-      .single()
+      .ilike('email', user.email.trim())
+      .maybeSingle()
       
     if (collab) {
       role = collab.role

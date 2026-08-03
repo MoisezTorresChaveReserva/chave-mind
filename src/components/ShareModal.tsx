@@ -69,11 +69,12 @@ export default function ShareModal({ mapId, isOpen, onClose, isOwner }: ShareMod
 
   const handleAddCollaborator = async () => {
     if (!newEmail.trim() || !newEmail.includes('@')) return
+    const cleanEmail = newEmail.trim().toLowerCase()
 
     try {
       const { data, error } = await supabase
         .from('map_collaborators')
-        .insert([{ map_id: mapId, email: newEmail.trim(), role: newRole }])
+        .insert([{ map_id: mapId, email: cleanEmail, role: newRole }])
         .select()
         .single()
 
