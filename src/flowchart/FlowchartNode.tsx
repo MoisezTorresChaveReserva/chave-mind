@@ -136,15 +136,19 @@ export default function FlowchartNode({ data, selected, id }: NodeProps) {
             <textarea
               ref={inputRef}
               value={text}
-              rows={1}
+              rows={Math.max(1, (text || '').split('\n').length)}
               onChange={handleTextChange}
               onKeyDown={onKeyDown}
               onBlur={onBlur}
-              className="nodrag nopan bg-transparent outline-none text-center w-full min-w-[80px] resize-none overflow-hidden block"
-              style={{ color: textColor }}
+              className="nodrag nopan bg-transparent outline-none text-center resize-none overflow-hidden block whitespace-pre"
+              style={{
+                width: `${Math.max(80, Math.max(...(text || '').split('\n').map(l => l.length), 1) * 9 + 16)}px`,
+                whiteSpace: 'pre',
+                color: textColor
+              }}
             />
           ) : (
-            <span className="select-none font-medium text-sm break-words whitespace-pre-wrap max-w-[150px]">
+            <span className="select-none font-medium text-sm whitespace-pre">
               {text || 'Processo'}
             </span>
           )}

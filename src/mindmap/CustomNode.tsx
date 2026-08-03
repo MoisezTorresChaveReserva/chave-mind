@@ -678,19 +678,23 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                 ref={inputRef}
                 value={text}
                 autoFocus
-                rows={1}
+                rows={Math.max(1, (text || '').split('\n').length)}
                 onChange={handleTextChange}
                 onKeyDown={onKeyDown}
                 onBlur={onBlur}
                 onMouseDown={(e) => e.stopPropagation()}
                 onDoubleClick={(e) => e.stopPropagation()}
-                className={`nodrag nopan outline-none bg-transparent text-left w-full min-w-[80px] px-2 resize-none overflow-hidden block ${isRoot
+                className={`nodrag nopan outline-none bg-transparent text-left px-2 resize-none overflow-hidden block whitespace-pre ${isRoot
                   ? 'text-[42px] font-bold tracking-tight text-slate-800'
                   : 'text-[18px] font-normal'}`}
-                style={{ color: customText || 'inherit' }}
+                style={{
+                  width: `${Math.max(80, Math.max(...(text || '').split('\n').map(l => l.length), 1) * (isRoot ? 24 : 11) + 20)}px`,
+                  whiteSpace: 'pre',
+                  color: customText || 'inherit'
+                }}
               />
             ) : (
-              <span className={`select-none text-left px-2 whitespace-pre-wrap break-words ${customText ? '' : 'text-gray-800 dark:text-gray-100'} ${isRoot ? 'font-medium text-xl uppercase' : 'font-normal text-[16px]'}`} style={{ color: customText || 'inherit' }}>
+              <span className={`select-none text-left px-2 whitespace-pre ${customText ? '' : 'text-gray-800 dark:text-gray-100'} ${isRoot ? 'font-medium text-xl uppercase' : 'font-normal text-[16px]'}`} style={{ color: customText || 'inherit' }}>
                 {text || 'Novo Nó'}
               </span>
             )}
