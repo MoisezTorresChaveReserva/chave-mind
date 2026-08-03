@@ -29,7 +29,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   const [editingTagId, setEditingTagId] = useState<string | null>(null)
   const [editTagText, setEditTagText] = useState('')
   const [editTagColor, setEditTagColor] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   
@@ -117,11 +117,21 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         if (inputRef.current) {
           inputRef.current.focus()
           inputRef.current.select()
+          inputRef.current.style.height = 'auto'
+          inputRef.current.style.height = `${inputRef.current.scrollHeight}px`
         }
       }, 50) // Small delay to let React Flow finish rendering and event propagation
       return () => clearTimeout(timeoutId)
     }
   }, [isEditing])
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value)
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto'
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`
+    }
+  }
 
   const onDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -136,8 +146,19 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
     }
   }
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === 'Escape') {
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      setIsEditing(false)
+      if (text.trim() === '') {
+        if (typeof data.onDelete === 'function') data.onDelete(id)
+        return
+      }
+      if (typeof data.onChange === 'function') {
+        data.onChange(id, text)
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
       setIsEditing(false)
       if (text.trim() === '') {
         if (typeof data.onDelete === 'function') data.onDelete(id)
@@ -653,22 +674,23 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
             {!!data.icon && <span className="text-lg">{data.icon as string}</span>}
 
             {isEditing ? (
-              <input
+              <textarea
                 ref={inputRef}
                 value={text}
                 autoFocus
-                onChange={(e) => setText(e.target.value)}
+                rows={1}
+                onChange={handleTextChange}
                 onKeyDown={onKeyDown}
                 onBlur={onBlur}
                 onMouseDown={(e) => e.stopPropagation()}
                 onDoubleClick={(e) => e.stopPropagation()}
-                className={`nodrag nopan outline-none bg-transparent text-left w-full min-w-[80px] px-2 ${isRoot
+                className={`nodrag nopan outline-none bg-transparent text-left w-full min-w-[80px] px-2 resize-none overflow-hidden block ${isRoot
                   ? 'text-[42px] font-bold tracking-tight text-slate-800'
                   : 'text-[18px] font-normal'}`}
                 style={{ color: customText || 'inherit' }}
               />
             ) : (
-              <span className={`select-none text-left px-2 ${customText ? '' : 'text-gray-800 dark:text-gray-100'} ${isRoot ? 'font-medium text-xl uppercase' : 'font-normal text-[16px]'}`} style={{ color: customText || 'inherit' }}>
+              <span className={`select-none text-left px-2 whitespace-pre-wrap break-words ${customText ? '' : 'text-gray-800 dark:text-gray-100'} ${isRoot ? 'font-medium text-xl uppercase' : 'font-normal text-[16px]'}`} style={{ color: customText || 'inherit' }}>
                 {text || 'Novo Nó'}
               </span>
             )}

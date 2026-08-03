@@ -8,7 +8,7 @@ export default function FlowchartNode({ data, selected, id }: NodeProps) {
   const [isEditing, setIsEditing] = useState(!!data.isNew)
   const [text, setText] = useState(data.label as string || '')
   const [showToolbar, setShowToolbar] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   
   const updateNodeInternals = useUpdateNodeInternals()
   const shape = (data.shape as string) || 'rectangle'
@@ -26,10 +26,20 @@ export default function FlowchartNode({ data, selected, id }: NodeProps) {
         if (inputRef.current) {
           inputRef.current.focus()
           inputRef.current.select()
+          inputRef.current.style.height = 'auto'
+          inputRef.current.style.height = `${inputRef.current.scrollHeight}px`
         }
       }, 50)
     }
   }, [isEditing])
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value)
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto'
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`
+    }
+  }
 
   useEffect(() => {
     if (!showToolbar) return
@@ -49,8 +59,17 @@ export default function FlowchartNode({ data, selected, id }: NodeProps) {
     if (!isReadOnly) setShowToolbar(prev => !prev)
   }
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === 'Escape') {
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      setIsEditing(false)
+      if (text.trim() === '') {
+        if (typeof data.onDelete === 'function') data.onDelete(id)
+      } else {
+        if (typeof data.onChange === 'function') data.onChange(id, text)
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
       setIsEditing(false)
       if (text.trim() === '') {
         if (typeof data.onDelete === 'function') data.onDelete(id)
@@ -114,17 +133,18 @@ export default function FlowchartNode({ data, selected, id }: NodeProps) {
       >
         <div className={`w-full flex items-center justify-center text-center ${innerContentClass}`}>
           {isEditing ? (
-            <input
+            <textarea
               ref={inputRef}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              rows={1}
+              onChange={handleTextChange}
               onKeyDown={onKeyDown}
               onBlur={onBlur}
-              className="nodrag nopan bg-transparent outline-none text-center w-full min-w-[80px]"
+              className="nodrag nopan bg-transparent outline-none text-center w-full min-w-[80px] resize-none overflow-hidden block"
               style={{ color: textColor }}
             />
           ) : (
-            <span className="select-none font-medium text-sm break-words max-w-[150px]">
+            <span className="select-none font-medium text-sm break-words whitespace-pre-wrap max-w-[150px]">
               {text || 'Processo'}
             </span>
           )}
