@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Search, MoreVertical, Star, Clock, Upload, LogOut, Trash2, Image as ImageIcon, Sparkles, Layout, Copy } from 'lucide-react'
+import { Plus, Search, MoreVertical, Star, Clock, Upload, LogOut, Trash2, Image as ImageIcon, Sparkles, Layout, Copy, Shield, Crown, Grid } from 'lucide-react'
 import { MindMap } from '@/types'
 import { supabase } from '@/supabase/client'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import AdminPanel from './AdminPanel'
+import { useGlobalPresence } from '@/hooks/useGlobalPresence'
 
 const generateId = () => {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
@@ -22,12 +24,15 @@ const GRADIENTS = [
 export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[], user: any }) {
   const [maps, setMaps] = useState<MindMap[]>(initialMaps)
   const [search, setSearch] = useState('')
+  const [activeTab, setActiveTab] = useState<'maps' | 'admin'>('maps')
   const [activeMapMenu, setActiveMapMenu] = useState<string | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [avatar, setAvatar] = useState<string | null>(user?.user_metadata?.avatar_url || null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  const { onlineUsers, isAdmin } = useGlobalPresence(user)
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -248,6 +253,31 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-blue-500/30 shadow-lg">M</div>
           <span className="font-bold tracking-tight text-gray-900 text-xl hidden sm:block">MindMap Pro</span>
+
+          {isAdmin && (
+            <div className="flex items-center bg-gray-100/80 p-1 rounded-xl sm:ml-4">
+              <button
+                onClick={() => setActiveTab('maps')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === 'maps'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <Grid size={14} /> <span className="hidden md:inline">Meus Mapas</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === 'admin'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
+                    : 'text-purple-700 bg-purple-50 hover:bg-purple-100'
+                }`}
+              >
+                <Shield size={14} /> <span>Painel Admin</span>
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3 md:gap-5">
@@ -320,6 +350,11 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
                     <div className="flex flex-col items-center">
                       <p className="text-sm font-semibold text-gray-900 truncate w-full text-center">{userName}</p>
                       <p className="text-xs text-gray-500 truncate w-full text-center">{user.email}</p>
+                      {isAdmin && (
+                        <span className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-700 border border-purple-200">
+                          <Crown size={12} className="text-amber-500" /> Administrador
+                        </span>
+                      )}
                     </div>
                   </div>
                   <button 
@@ -345,164 +380,173 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="px-8 py-10 md:py-16 max-w-7xl mx-auto w-full flex flex-col md:flex-row items-center justify-between gap-8">
-        <div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-3 flex items-center gap-3">
-              Olá, {userName}! <span className="text-3xl">👋</span>
-            </h1>
-            <p className="text-lg text-gray-500 max-w-xl">
-              Pronto para transformar suas ideias em mapas mentais incríveis? Você possui <span className="font-semibold text-blue-600">{maps.length} {maps.length === 1 ? 'mapa' : 'mapas'}</span> no seu espaço de trabalho.
-            </p>
-          </motion.div>
-        </div>
-        
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }} 
-          animate={{ opacity: 1, scale: 1 }} 
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="hidden lg:flex p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50 shadow-sm items-center gap-5"
-        >
-          <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
-            <Sparkles size={24} />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 text-lg">Dica Rápida</h3>
-            <p className="text-sm text-gray-600 max-w-xs">Use o modo foco para criar apresentações dinâmicas a partir dos seus mapas.</p>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* Main Content */}
-      <main className="flex-1 px-8 pb-20 max-w-7xl mx-auto w-full">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Mapas Recentes</h2>
-        </div>
-        
-        <motion.div 
-          layout
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-        >
-          <AnimatePresence>
-            {filteredMaps.map((map, index) => {
-              let preview = null
-              if (map.thumbnail) {
-                try {
-                  const parsed = JSON.parse(map.thumbnail)
-                  if (!Array.isArray(parsed) && parsed.preview) preview = parsed.preview
-                } catch(e) {}
-              }
-              
-              const gradientClass = GRADIENTS[(map.id.charCodeAt(0) + map.id.charCodeAt(map.id.length - 1)) % GRADIENTS.length]
-              
-              return (
-              <motion.div
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
-                key={map.id} 
-                className="group bg-white border border-gray-200/80 rounded-3xl hover:shadow-xl hover:shadow-gray-200/50 hover:border-blue-200 transition-all duration-300 cursor-pointer flex flex-col relative overflow-hidden h-[280px]"
-                onClick={() => router.push(`/map/${map.id}`)}
-              >
-                {preview ? (
-                  <div className="h-44 w-full bg-gray-50 relative overflow-hidden">
-                    <img src={preview} alt="Map preview" className="w-full h-full object-cover scale-[1.02] group-hover:scale-110 transition-transform duration-700 ease-out" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none"></div>
-                  </div>
-                ) : (
-                  <div className={`h-44 w-full bg-gradient-to-br ${gradientClass} relative overflow-hidden flex items-center justify-center`}>
-                    <div className="absolute inset-0 bg-black/10"></div>
-                    <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-lg border border-white/20 z-10 group-hover:scale-110 transition-transform duration-500">
-                      <span className="font-bold text-3xl">{map.title.charAt(0).toUpperCase()}</span>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Floating Actions */}
-                <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
-                  <button 
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all backdrop-blur-md border shadow-sm ${map.favorite ? 'bg-yellow-50 border-yellow-200 text-yellow-500' : 'bg-white/80 border-gray-200/50 text-gray-500 hover:bg-white hover:text-yellow-500 opacity-0 group-hover:opacity-100'}`} 
-                    onClick={(e) => { e.stopPropagation(); /* toggle favorite */ }}
-                  >
-                    <Star size={14} fill={map.favorite ? 'currentColor' : 'none'} />
-                  </button>
-                  <div className="relative">
-                    <button 
-                      className={`w-8 h-8 rounded-full flex items-center justify-center bg-white/80 backdrop-blur-md border border-gray-200/50 text-gray-600 hover:bg-white hover:text-gray-900 transition-all shadow-sm ${activeMapMenu === map.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} 
-                      onClick={(e) => { e.stopPropagation(); setActiveMapMenu(activeMapMenu === map.id ? null : map.id); setShowUserMenu(false) }}
-                    >
-                      <MoreVertical size={16} />
-                    </button>
-                    <AnimatePresence>
-                      {activeMapMenu === map.id && (
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.9, y: 5 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.9, y: 5 }}
-                          className="absolute right-0 mt-2 w-36 bg-white border border-gray-100 rounded-xl shadow-xl py-1 z-50 origin-top-right"
-                        >
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleDuplicateMap(map.id) }}
-                            className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors border-b border-gray-100"
-                          >
-                            <Copy size={16} /> Duplicar
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleDeleteMap(map.id) }}
-                            disabled={isDeleting === map.id}
-                            className="w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50 transition-colors"
-                          >
-                            <Trash2 size={16} /> {isDeleting === map.id ? 'Excluindo...' : 'Excluir'}
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-                
-                <div className="p-5 flex flex-col justify-end flex-1 bg-white relative z-10 border-t border-gray-100/50">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-gray-900 truncate text-lg flex-1 pr-2">{map.title}</h3>
-                    {map.map_type === 'flowchart' ? (
-                       <span title="Fluxograma"><Layout size={18} className="text-indigo-400 shrink-0" /></span>
-                    ) : (
-                       <span title="Mapa Mental"><Sparkles size={18} className="text-blue-400 shrink-0" /></span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400 mt-2">
-                    <Clock size={14} /> Editado em {new Date(map.updated_at).toLocaleDateString()}
-                  </div>
-                </div>
+      {/* Body Content */}
+      {activeTab === 'admin' && isAdmin ? (
+        <main className="flex-1 py-4">
+          <AdminPanel currentUser={user} allMaps={maps} onlineUsers={onlineUsers} />
+        </main>
+      ) : (
+        <>
+          {/* Hero Section */}
+          <section className="px-8 py-10 md:py-16 max-w-7xl mx-auto w-full flex flex-col md:flex-row items-center justify-between gap-8">
+            <div>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-3 flex items-center gap-3">
+                  Olá, {userName}! <span className="text-3xl">👋</span>
+                </h1>
+                <p className="text-lg text-gray-500 max-w-xl">
+                  Pronto para transformar suas ideias em mapas mentais incríveis? Você possui <span className="font-semibold text-blue-600">{maps.length} {maps.length === 1 ? 'mapa' : 'mapas'}</span> no seu espaço de trabalho.
+                </p>
               </motion.div>
-              )
-            })}
-          </AnimatePresence>
-        </motion.div>
-
-        {filteredMaps.length === 0 && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} 
-            className="flex flex-col items-center justify-center py-24 text-center"
-          >
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-6">
-              <Search size={40} />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Nenhum mapa encontrado</h3>
-            <p className="text-gray-500 max-w-md mb-8">
-              Não encontramos nenhum mapa correspondente à sua pesquisa ou você ainda não criou nenhum.
-            </p>
-            <button 
-              onClick={() => createNewMap('mindmap')}
-              className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="hidden lg:flex p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50 shadow-sm items-center gap-5"
             >
-              <Plus size={18} /> Criar seu primeiro Mapa
-            </button>
-          </motion.div>
-        )}
-      </main>
+              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+                <Sparkles size={24} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 text-lg">Dica Rápida</h3>
+                <p className="text-sm text-gray-600 max-w-xs">Use o modo foco para criar apresentações dinâmicas a partir dos seus mapas.</p>
+              </div>
+            </motion.div>
+          </section>
+
+          {/* Main Content */}
+          <main className="flex-1 px-8 pb-20 max-w-7xl mx-auto w-full">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Mapas Recentes</h2>
+            </div>
+            
+            <motion.div 
+              layout
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            >
+              <AnimatePresence>
+                {filteredMaps.map((map, index) => {
+                  let preview = null
+                  if (map.thumbnail) {
+                    try {
+                      const parsed = JSON.parse(map.thumbnail)
+                      if (!Array.isArray(parsed) && parsed.preview) preview = parsed.preview
+                    } catch(e) {}
+                  }
+                  
+                  const gradientClass = GRADIENTS[(map.id.charCodeAt(0) + map.id.charCodeAt(map.id.length - 1)) % GRADIENTS.length]
+                  
+                  return (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
+                    key={map.id} 
+                    className="group bg-white border border-gray-200/80 rounded-3xl hover:shadow-xl hover:shadow-gray-200/50 hover:border-blue-200 transition-all duration-300 cursor-pointer flex flex-col relative overflow-hidden h-[280px]"
+                    onClick={() => router.push(`/map/${map.id}`)}
+                  >
+                    {preview ? (
+                      <div className="h-44 w-full bg-gray-50 relative overflow-hidden">
+                        <img src={preview} alt="Map preview" className="w-full h-full object-cover scale-[1.02] group-hover:scale-110 transition-transform duration-700 ease-out" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none"></div>
+                      </div>
+                    ) : (
+                      <div className={`h-44 w-full bg-gradient-to-br ${gradientClass} relative overflow-hidden flex items-center justify-center`}>
+                        <div className="absolute inset-0 bg-black/10"></div>
+                        <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-lg border border-white/20 z-10 group-hover:scale-110 transition-transform duration-500">
+                          <span className="font-bold text-3xl">{map.title.charAt(0).toUpperCase()}</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Floating Actions */}
+                    <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
+                      <button 
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all backdrop-blur-md border shadow-sm ${map.favorite ? 'bg-yellow-50 border-yellow-200 text-yellow-500' : 'bg-white/80 border-gray-200/50 text-gray-500 hover:bg-white hover:text-yellow-500 opacity-0 group-hover:opacity-100'}`} 
+                        onClick={(e) => { e.stopPropagation(); /* toggle favorite */ }}
+                      >
+                        <Star size={14} fill={map.favorite ? 'currentColor' : 'none'} />
+                      </button>
+                      <div className="relative">
+                        <button 
+                          className={`w-8 h-8 rounded-full flex items-center justify-center bg-white/80 backdrop-blur-md border border-gray-200/50 text-gray-600 hover:bg-white hover:text-gray-900 transition-all shadow-sm ${activeMapMenu === map.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} 
+                          onClick={(e) => { e.stopPropagation(); setActiveMapMenu(activeMapMenu === map.id ? null : map.id); setShowUserMenu(false) }}
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+                        <AnimatePresence>
+                          {activeMapMenu === map.id && (
+                            <motion.div 
+                              initial={{ opacity: 0, scale: 0.9, y: 5 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.9, y: 5 }}
+                              className="absolute right-0 mt-2 w-36 bg-white border border-gray-100 rounded-xl shadow-xl py-1 z-50 origin-top-right"
+                            >
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDuplicateMap(map.id) }}
+                                className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors border-b border-gray-100"
+                              >
+                                <Copy size={16} /> Duplicar
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDeleteMap(map.id) }}
+                                disabled={isDeleting === map.id}
+                                className="w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50 transition-colors"
+                              >
+                                <Trash2 size={16} /> {isDeleting === map.id ? 'Excluindo...' : 'Excluir'}
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                    
+                    <div className="p-5 flex flex-col justify-end flex-1 bg-white relative z-10 border-t border-gray-100/50">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-gray-900 truncate text-lg flex-1 pr-2">{map.title}</h3>
+                        {map.map_type === 'flowchart' ? (
+                           <span title="Fluxograma"><Layout size={18} className="text-indigo-400 shrink-0" /></span>
+                        ) : (
+                           <span title="Mapa Mental"><Sparkles size={18} className="text-blue-400 shrink-0" /></span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400 mt-2">
+                        <Clock size={14} /> Editado em {new Date(map.updated_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </motion.div>
+                  )
+                })}
+              </AnimatePresence>
+            </motion.div>
+
+            {filteredMaps.length === 0 && (
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} 
+                className="flex flex-col items-center justify-center py-24 text-center"
+              >
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-6">
+                  <Search size={40} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Nenhum mapa encontrado</h3>
+                <p className="text-gray-500 max-w-md mb-8">
+                  Não encontramos nenhum mapa correspondente à sua pesquisa ou você ainda não criou nenhum.
+                </p>
+                <button 
+                  onClick={() => createNewMap('mindmap')}
+                  className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
+                >
+                  <Plus size={18} /> Criar seu primeiro Mapa
+                </button>
+              </motion.div>
+            )}
+          </main>
+        </>
+      )}
     </div>
   )
 }

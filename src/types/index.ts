@@ -57,3 +57,22 @@ export type MapEdge = {
   animated: boolean
   label?: string
 }
+
+export type UserProfile = {
+  id: string
+  email: string
+  full_name?: string
+  avatar_url?: string | null
+  role?: 'admin' | 'user'
+  last_access_at?: string
+  is_online?: boolean
+  maps_count?: number
+  created_at?: string
+}
+
+export type AdminStats = {
+  totalUsers: number
+  onlineUsers: number
+  totalMaps: number
+}
+
