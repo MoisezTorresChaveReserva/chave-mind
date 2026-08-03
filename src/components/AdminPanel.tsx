@@ -73,7 +73,7 @@ export default function AdminPanel({ currentUser, allMaps, onlineUsers }: AdminP
 
       // Ensure logged in user is in the list
       const loggedEmail = currentUser.email.toLowerCase()
-      const hasLoggedUser = finalUsers.some(u => u.email.toLowerCase() === loggedEmail)
+      const hasLoggedUser = finalUsers.some(u => u.email.toLowerCase() === loggedEmail || u.id === currentUser.id)
       if (!hasLoggedUser) {
         finalUsers.unshift({
           id: currentUser.id,
@@ -87,6 +87,37 @@ export default function AdminPanel({ currentUser, allMaps, onlineUsers }: AdminP
         })
       }
 
+      // Add all users from onlineUsers (Realtime Presence) if not already in finalUsers
+      onlineUsers.forEach(onlineUser => {
+        if (!onlineUser.email) return
+        const emailLower = onlineUser.email.toLowerCase()
+        const existingIndex = finalUsers.findIndex(u => u.email.toLowerCase() === emailLower || u.id === onlineUser.user_id)
+        
+        if (existingIndex !== -1) {
+          // Update status to online and refresh name/avatar/last_access if missing
+          finalUsers[existingIndex].is_online = true
+          if (!finalUsers[existingIndex].avatar_url && onlineUser.avatar_url) {
+            finalUsers[existingIndex].avatar_url = onlineUser.avatar_url
+          }
+          if (onlineUser.name && finalUsers[existingIndex].full_name === emailLower.split('@')[0]) {
+            finalUsers[existingIndex].full_name = onlineUser.name
+          }
+        } else {
+          // Add new online user from presence
+          const isAdmin = ADMIN_EMAILS.includes(emailLower)
+          finalUsers.push({
+            id: onlineUser.user_id,
+            email: onlineUser.email,
+            full_name: onlineUser.name || emailLower.split('@')[0],
+            avatar_url: onlineUser.avatar_url || null,
+            role: isAdmin ? 'admin' : 'user',
+            last_access_at: new Date(onlineUser.joinedAt || Date.now()).toISOString(),
+            is_online: true,
+            maps_count: mapCountMap.get(onlineUser.user_id) || 0
+          })
+        }
+      })
+
       // Also ensure moiseztorres100@gmail.com is listed as admin even if no profile row yet
       ADMIN_EMAILS.forEach(adminEmail => {
         const hasAdmin = finalUsers.some(u => u.email.toLowerCase() === adminEmail)
@@ -99,10 +130,30 @@ export default function AdminPanel({ currentUser, allMaps, onlineUsers }: AdminP
             role: 'admin',
             last_access_at: new Date().toISOString(),
             is_online: onlineEmailsSet.has(adminEmail),
-            maps_count: 0
+            maps_count: mapCountMap.get('admin-' + adminEmail) || 0
           })
         }
       })
+
+      // Add any map owners not yet listed
+      if (mapsData) {
+        mapsData.forEach((m: any) => {
+          if (!m.user_id) return
+          const exists = finalUsers.some(u => u.id === m.user_id)
+          if (!exists) {
+            finalUsers.push({
+              id: m.user_id,
+              email: `usuario_${m.user_id.substring(0, 6)}@plataforma`,
+              full_name: `Usuário (${m.user_id.substring(0, 6)})`,
+              avatar_url: null,
+              role: 'user',
+              last_access_at: lastActivityMap.get(m.user_id) || m.created_at || new Date().toISOString(),
+              is_online: onlineIdsSet.has(m.user_id),
+              maps_count: mapCountMap.get(m.user_id) || 1
+            })
+          }
+        })
+      }
 
       // Sort: Admins & Online first, then by last access
       finalUsers.sort((a, b) => {
