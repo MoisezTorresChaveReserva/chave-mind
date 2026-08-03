@@ -710,22 +710,28 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         }
       }
       
-      // Capture thumbnail if it has been more than 10 seconds since last capture
-      if (Date.now() - lastThumbnailCapture.current > 10000) {
+      // Capture thumbnail in background idle time without blocking UI editing thread
+      if (Date.now() - lastThumbnailCapture.current > 30000) {
         lastThumbnailCapture.current = Date.now()
-        const flowViewport = document.querySelector('.react-flow__viewport') as HTMLElement
-        if (flowViewport) {
-          toJpeg(flowViewport, { 
-            backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
-            quality: 0.1,
-            pixelRatio: 0.5
-          }).then(dataUrl => {
-            const { mapTags } = useMapStore.getState()
-            supabase.from('mind_maps').update({ 
-              thumbnail: JSON.stringify({ slides: slides || [], preview: dataUrl, mapTags }) 
-            }).eq('id', mapId).then()
-          }).catch(console.error)
-        }
+        const scheduleIdle = typeof window !== 'undefined' && (window as any).requestIdleCallback 
+          ? (window as any).requestIdleCallback 
+          : (cb: Function) => setTimeout(cb, 1000)
+
+        scheduleIdle(() => {
+          const flowViewport = document.querySelector('.react-flow__viewport') as HTMLElement
+          if (flowViewport) {
+            toJpeg(flowViewport, { 
+              backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
+              quality: 0.1,
+              pixelRatio: 0.5
+            }).then(dataUrl => {
+              const { mapTags } = useMapStore.getState()
+              supabase.from('mind_maps').update({ 
+                thumbnail: JSON.stringify({ slides: slides || [], preview: dataUrl, mapTags }) 
+              }).eq('id', mapId).then()
+            }).catch(console.error)
+          }
+        })
       }
 
       setSaveStatus('saved')
@@ -1497,16 +1503,6 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     height: Math.abs(currentPoint.y - startPoint.y)
   } : null
 
-  const finalDisplayNodesWithCollab = useMemo(() => {
-    return finalDisplayNodes.map(n => ({
-      ...n,
-      data: {
-        ...n.data,
-        collaborators
-      }
-    }))
-  }, [finalDisplayNodes, collaborators])
-
   return (
     <div 
       className="w-full h-full relative overflow-hidden" 
@@ -1517,7 +1513,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     >
 
       <ReactFlow
-        nodes={finalDisplayNodesWithCollab}
+        nodes={finalDisplayNodes}
         edges={finalDisplayEdges}
         onNodesChange={onNodesChangeWrapper}
         onEdgesChange={onEdgesChange}

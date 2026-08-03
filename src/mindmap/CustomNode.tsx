@@ -794,4 +794,41 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   )
 }
 
-export default memo(CustomNode)
+const arePropsEqual = (prevProps: NodeProps, nextProps: NodeProps) => {
+  if (prevProps.id !== nextProps.id) return false
+  if (prevProps.selected !== nextProps.selected) return false
+  if (prevProps.positionAbsoluteX !== nextProps.positionAbsoluteX) return false
+  if (prevProps.positionAbsoluteY !== nextProps.positionAbsoluteY) return false
+  
+  const d1 = prevProps.data as any
+  const d2 = nextProps.data as any
+  
+  if (d1.label !== d2.label) return false
+  if (d1.direction !== d2.direction) return false
+  if (d1.collapsed !== d2.collapsed) return false
+  if (d1.hasChildren !== d2.hasChildren) return false
+  if (d1.branchColor !== d2.branchColor) return false
+  if (d1.bg_color !== d2.bg_color) return false
+  if (d1.text_color !== d2.text_color) return false
+  if (d1.image_url !== d2.image_url) return false
+  if (d1.icon !== d2.icon) return false
+  if (d1.link_url !== d2.link_url) return false
+  if (d1.layoutMode !== d2.layoutMode) return false
+  if (d1.isRoot !== d2.isRoot) return false
+  if (d1.isDropTarget !== d2.isDropTarget) return false
+  if (d1.isColorful !== d2.isColorful) return false
+  if (d1.isOutlined !== d2.isOutlined) return false
+  if (d1.theme !== d2.theme) return false
+  if (d1.isReadOnly !== d2.isReadOnly) return false
+
+  const tags1 = (d1.tags as string[]) || []
+  const tags2 = (d2.tags as string[]) || []
+  if (tags1.length !== tags2.length) return false
+  for (let i = 0; i < tags1.length; i++) {
+    if (tags1[i] !== tags2[i]) return false
+  }
+
+  return true
+}
+
+export default memo(CustomNode, arePropsEqual)
