@@ -881,15 +881,29 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     setNodes(nds => applyAutoLayout(nds, layoutMode))
   }, [layoutMode, applyAutoLayout, setNodes])
 
-  // Auto-layout on dimension changes (e.g. text edit)
+  const prevDimensions = useRef<{ [id: string]: { width: number; height: number } }>({})
+  const layoutTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Auto-layout on dimension changes (e.g. text edit) without infinite loop
   const onNodesChangeWrapper = useCallback((changes: any[]) => {
     onNodesChange(changes)
     
-    if (changes.some(c => c.type === 'dimensions')) {
-      // Small delay to let React Flow apply dimensions first
-      setTimeout(() => {
+    let hasActualDimensionChange = false
+    changes.forEach(c => {
+      if (c.type === 'dimensions' && c.dimensions) {
+        const prev = prevDimensions.current[c.id]
+        if (!prev || Math.abs(prev.width - c.dimensions.width) > 2 || Math.abs(prev.height - c.dimensions.height) > 2) {
+          prevDimensions.current[c.id] = { width: c.dimensions.width, height: c.dimensions.height }
+          hasActualDimensionChange = true
+        }
+      }
+    })
+
+    if (hasActualDimensionChange) {
+      if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current)
+      layoutTimeoutRef.current = setTimeout(() => {
         setNodes(nds => applyAutoLayout(nds))
-      }, 10)
+      }, 150)
     }
   }, [onNodesChange, setNodes, applyAutoLayout])
 

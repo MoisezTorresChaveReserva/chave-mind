@@ -42,7 +42,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
 
   useEffect(() => {
     updateNodeInternals(id)
-  }, [id, data.direction, data.layoutMode, data.hasChildren, data.tags, data.image_url, data.icon, data.link_url, data.label, nodeTags.length, updateNodeInternals])
+  }, [id, data.direction, data.layoutMode, data.hasChildren, data.tags, data.image_url, data.icon, data.link_url, data.label, text, nodeTags.length, updateNodeInternals])
 
   const handleClickOutside = () => {
     if (contextMenu) {
