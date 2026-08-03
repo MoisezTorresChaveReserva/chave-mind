@@ -909,7 +909,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current)
       layoutTimeoutRef.current = setTimeout(() => {
         setNodes(nds => applyAutoLayout(nds))
-      }, 200)
+      }, 30)
     }
   }, [onNodesChange, setNodes, applyAutoLayout])
 
