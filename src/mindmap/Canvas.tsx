@@ -1286,6 +1286,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
     // 4. Process edges
     let finalEdges = edges.filter(e => e.id !== 'ghost-preview-edge').map(e => {
+      const sourceNode = finalNodes.find(n => n.id === e.source)
       const targetNode = finalNodes.find(n => n.id === e.target)
       const color = globalLineColor || (targetNode ? (nodeColors.get(targetNode.id) || '#ec4899') : '#ec4899')
       
@@ -1302,9 +1303,17 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         sHandle = 'bottom'
         tHandle = 'left'
       } else {
-        const isLeft = (targetNode?.data as any)?.direction === 'left'
-        sHandle = isLeft ? 'left' : 'right'
-        tHandle = isLeft ? 'right' : 'left'
+        const sourceIsLeft = (sourceNode?.data as any)?.direction === 'left'
+        const isSourceRoot = !(sourceNode?.data as any)?.parent_id || !finalNodes.find(x => x.id === (sourceNode?.data as any)?.parent_id)
+        const targetIsLeft = (targetNode?.data as any)?.direction === 'left'
+
+        if (isSourceRoot) {
+          sHandle = targetIsLeft ? 'left' : 'right'
+        } else {
+          sHandle = sourceIsLeft ? 'left' : 'right'
+        }
+
+        tHandle = targetIsLeft ? 'right' : 'left'
       }
 
       return {
