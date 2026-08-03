@@ -13,8 +13,12 @@ import { supabase } from '@/supabase/client'
 import { toJpeg } from 'html-to-image'
 import { useMapStore } from '@/store/mapStore'
 import { useHistoryStore } from '@/store/historyStore'
+import { useGlobalPresence } from '@/hooks/useGlobalPresence'
 
 export default function Editor({ map, initialNodes, initialEdges, initialMapTags = [], initialNodeTags = [], user, isReadOnly = false }: { map: MindMap, initialNodes: MapNode[], initialEdges: MapEdge[], initialMapTags?: any[], initialNodeTags?: any[], user: any, isReadOnly?: boolean }) {
+  // Track global presence across the platform
+  useGlobalPresence(user)
+
   const router = useRouter()
   const [isSidebarOpen, setSidebarOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
