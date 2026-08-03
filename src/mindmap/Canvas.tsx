@@ -321,21 +321,26 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
     const getNodeWidth = (nodeId: string) => {
       const node = nodesList.find(n => n.id === nodeId)
-      if (node && node.measured?.width) return node.measured.width
+      if (node && node.measured?.width && node.measured.width > 0) return node.measured.width
       
       if (!node) return 100
       const label = (node.data.label as string) || ''
       const isRoot = !node.data.parent_id
-      const charWidth = isRoot ? 12 : 9
-      return Math.max(60, label.length * charWidth + 50)
+      const lines = label.split('\n')
+      const maxLineLength = Math.max(...lines.map(l => l.length), 1)
+      const charWidth = isRoot ? 14 : 10
+      return Math.max(80, maxLineLength * charWidth + 40)
     }
 
     const getNodeHeight = (nodeId: string) => {
       const node = nodesList.find(n => n.id === nodeId)
-      if (node && node.measured?.height) return node.measured.height
-      if (!node) return 40
+      if (node && node.measured?.height && node.measured.height > 0) return node.measured.height
+      if (!node) return 36
       
-      let h = 40
+      let h = 36
+      const label = (node.data.label as string) || ''
+      const lineCount = Math.max(1, label.split('\n').length)
+      h += (lineCount - 1) * 22
       if (node.data.image_url) h += 130
       if ((node.data.tags as string[])?.length > 0) h += 20
       return h
