@@ -50,9 +50,12 @@ export default function AdminPanel({ currentUser, allMaps, onlineUsers }: AdminP
 
       // 2. Fetch ALL users via admin API (Server Action)
       try {
-        const authUsers = await getAllAdminUsers()
-        if (authUsers && authUsers.length > 0) {
-          finalUsers = authUsers.map((u: any) => {
+        const result = await getAllAdminUsers()
+        if (result.error) {
+          console.error('Server Action Error:', result.error)
+          alert('Erro ao carregar lista completa de usuários: ' + result.error)
+        } else if (result.users && result.users.length > 0) {
+          finalUsers = result.users.map((u: any) => {
             const email = u.email || ''
             const isOnline = onlineIdsSet.has(u.id) || onlineEmailsSet.has(email.toLowerCase())
             const isPrimaryAdmin = ADMIN_EMAILS.includes(email.toLowerCase())
@@ -73,6 +76,7 @@ export default function AdminPanel({ currentUser, allMaps, onlineUsers }: AdminP
         }
       } catch (err) {
         console.error('Failed to fetch auth users, falling back to maps data', err)
+        alert('Erro ao comunicar com o servidor para listar usuários.')
       }
 
       // Ensure logged in user is in the list
