@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { supabase } from '@/supabase/client'
 import { UserProfile, MindMap } from '@/types'
 import { ADMIN_EMAILS, OnlinePresenceUser } from '@/hooks/useGlobalPresence'
+import { getAllAdminUsers } from '@/app/actions'
 
 interface AdminPanelProps {
   currentUser: any
@@ -22,13 +23,7 @@ export default function AdminPanel({ currentUser, allMaps, onlineUsers }: AdminP
   const fetchUsers = async () => {
     setLoading(true)
     try {
-      // 1. Try to fetch from user_profiles table if it exists
-      const { data: dbProfiles, error: profileErr } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .order('last_access_at', { ascending: false })
-
-      // 2. Fetch maps grouped by user_id to get map counts per user
+      // 1. Fetch maps grouped by user_id to get map counts per user
       const { data: mapsData } = await supabase
         .from('mind_maps')
         .select('user_id, updated_at, created_at')
@@ -53,22 +48,31 @@ export default function AdminPanel({ currentUser, allMaps, onlineUsers }: AdminP
 
       let finalUsers: UserProfile[] = []
 
-      if (dbProfiles && dbProfiles.length > 0 && !profileErr) {
-        finalUsers = dbProfiles.map((p: any) => {
-          const isOnline = onlineIdsSet.has(p.id) || onlineEmailsSet.has(p.email.toLowerCase())
-          const isPrimaryAdmin = ADMIN_EMAILS.includes(p.email.toLowerCase())
-          return {
-            id: p.id,
-            email: p.email,
-            full_name: p.full_name || p.email.split('@')[0],
-            avatar_url: p.avatar_url,
-            role: isPrimaryAdmin ? 'admin' : (p.role || 'user'),
-            last_access_at: p.last_access_at || lastActivityMap.get(p.id) || p.created_at || new Date().toISOString(),
-            is_online: isOnline,
-            maps_count: mapCountMap.get(p.id) || 0,
-            created_at: p.created_at
-          }
-        })
+      // 2. Fetch ALL users via admin API (Server Action)
+      try {
+        const authUsers = await getAllAdminUsers()
+        if (authUsers && authUsers.length > 0) {
+          finalUsers = authUsers.map((u: any) => {
+            const email = u.email || ''
+            const isOnline = onlineIdsSet.has(u.id) || onlineEmailsSet.has(email.toLowerCase())
+            const isPrimaryAdmin = ADMIN_EMAILS.includes(email.toLowerCase())
+            const lastAccess = u.last_sign_in_at || lastActivityMap.get(u.id) || u.created_at || new Date().toISOString()
+            
+            return {
+              id: u.id,
+              email: email,
+              full_name: u.full_name,
+              avatar_url: u.avatar_url,
+              role: isPrimaryAdmin ? 'admin' : 'user',
+              last_access_at: lastAccess,
+              is_online: isOnline,
+              maps_count: mapCountMap.get(u.id) || 0,
+              created_at: u.created_at
+            }
+          })
+        }
+      } catch (err) {
+        console.error('Failed to fetch auth users, falling back to maps data', err)
       }
 
       // Ensure logged in user is in the list
@@ -114,23 +118,6 @@ export default function AdminPanel({ currentUser, allMaps, onlineUsers }: AdminP
             last_access_at: new Date(onlineUser.joinedAt || Date.now()).toISOString(),
             is_online: true,
             maps_count: mapCountMap.get(onlineUser.user_id) || 0
-          })
-        }
-      })
-
-      // Also ensure moiseztorres100@gmail.com is listed as admin even if no profile row yet
-      ADMIN_EMAILS.forEach(adminEmail => {
-        const hasAdmin = finalUsers.some(u => u.email.toLowerCase() === adminEmail)
-        if (!hasAdmin) {
-          finalUsers.push({
-            id: 'admin-' + adminEmail,
-            email: adminEmail,
-            full_name: 'Moises Torres',
-            avatar_url: null,
-            role: 'admin',
-            last_access_at: new Date().toISOString(),
-            is_online: onlineEmailsSet.has(adminEmail),
-            maps_count: mapCountMap.get('admin-' + adminEmail) || 0
           })
         }
       })
