@@ -437,6 +437,17 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
               Compartilhar
             </button>
             <button 
+              onClick={() => {
+                setSaveStatus('saving')
+                window.dispatchEvent(new CustomEvent('force-save'))
+                setTimeout(() => setSaveStatus('saved'), 500)
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 font-medium text-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
+              title="Salvar Manualmente"
+            >
+              <Cloud size={14} /> Salvar
+            </button>
+            <button 
               onClick={() => setIsExportModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-medium text-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
             >
