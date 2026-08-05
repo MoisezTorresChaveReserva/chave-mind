@@ -14,7 +14,8 @@ import {
   addEdge,
   ConnectionMode,
   MarkerType,
-  BackgroundVariant
+  BackgroundVariant,
+  SelectionMode
 } from '@xyflow/react'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
 import CustomNode from './CustomNode'
@@ -1615,103 +1616,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
      });
   }, [displayEdges, displayNodes, playingSlide]);
 
-  // Mouse Handlers for Drag-to-Select Slide Capture
-  const handlePointerDown = (e: React.PointerEvent) => {
-    // Only capture if we are in capturing mode
-    if (presentationMode !== 'presentation_setup' || !isCapturingMode) return
-    
-    // Convert screen coordinates to flow coordinates for the selection start
-    const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    setStartPoint(flowPos)
-    setCurrentPoint(flowPos)
-    setIsDrawing(true)
-    e.preventDefault()
-  }
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDrawing) return
-    const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    setCurrentPoint(flowPos)
-  }
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!isDrawing) return
-    setIsDrawing(false)
-
-    const width = Math.abs(currentPoint.x - startPoint.x)
-    const height = Math.abs(currentPoint.y - startPoint.y)
-    
-    // Only save if it's a decent size box
-    if (width > 50 && height > 50) {
-      const bounds = {
-        x: Math.min(startPoint.x, currentPoint.x),
-        y: Math.min(startPoint.y, currentPoint.y),
-        width,
-        height
-      }
-      
-      if (setSlides) {
-        if (updatingSlideId) {
-          const collapsedNodes = nodes.filter(n => n.data?.collapsed).map(n => n.id)
-          setSlides((prev: any) => prev.map((s: any) => s.id === updatingSlideId ? { ...s, bounds, collapsedNodes } : s))
-          if (setUpdatingSlideId) setUpdatingSlideId(null)
-          if (setIsCapturingMode) setIsCapturingMode(false)
-        } else {
-          let autoName = ''
-          try {
-            const intersectedNodes = nodes.filter(n => {
-               const nx = n.position.x;
-               const ny = n.position.y;
-               return nx >= bounds.x && nx <= bounds.x + bounds.width && ny >= bounds.y && ny <= bounds.y + bounds.height;
-            })
-            if (intersectedNodes && intersectedNodes.length > 0) {
-              // Find the top-most or most prominent node. Here we just take the first one that has a label
-              const nodeWithLabel = intersectedNodes.find(n => n.data?.label)
-              if (nodeWithLabel) {
-                // strip html if any
-                const tempDiv = document.createElement('div')
-                tempDiv.innerHTML = String(nodeWithLabel.data.label)
-                autoName = tempDiv.textContent || tempDiv.innerText || ''
-              }
-            }
-          } catch(e) {
-            console.error('Failed to auto-name slide', e)
-          }
-
-          const collapsedNodes = nodes.filter(n => n.data?.collapsed).map(n => n.id)
-          const newSlide = {
-            id: generateId(),
-            name: autoName.trim() || undefined,
-            bounds,
-            collapsedNodes
-          }
-          setSlides((prev: any) => [...prev, newSlide])
-          // We DO NOT set isCapturingMode to false here, allowing continuous capture
-        }
-      }
-    } else {
-       // If box is too small, just cancel the mode
-       if (setIsCapturingMode) setIsCapturingMode(false)
-       if (setUpdatingSlideId) setUpdatingSlideId(null)
-    }
-  }
-
-  // Calculate drawing box for rendering
-  const drawBox = isDrawing ? {
-    left: Math.min(startPoint.x, currentPoint.x),
-    top: Math.min(startPoint.y, currentPoint.y),
-    width: Math.abs(currentPoint.x - startPoint.x),
-    height: Math.abs(currentPoint.y - startPoint.y)
-  } : null
-
   return (
-    <div 
-      className="w-full h-full relative overflow-hidden" 
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
-    >
+    <div className="w-full h-full relative overflow-hidden">
 
       {/* Presentation Setup Floating Controls */}
       {presentationMode === 'presentation_setup' && (
@@ -1743,8 +1649,10 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         onEdgesChange={onEdgesChange}
         onConnect={(params) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'bezier' }, eds)) }}
         nodeTypes={nodeTypes}
-        onNodeClick={(_, node) => {
-          // Allow React Flow native selection handling
+        onNodeClick={(e, clickedNode) => {
+          if (e.shiftKey || e.ctrlKey || e.metaKey) {
+            setNodes((nds) => nds.map((n) => n.id === clickedNode.id ? { ...n, selected: !n.selected } : n))
+          }
         }}
         onPaneClick={() => {
           setNodes((nds) => nds.map((n) => ({ ...n, selected: false })))
@@ -1756,7 +1664,10 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         nodesConnectable={!isReadOnly}
         elementsSelectable={true}
         connectionMode={ConnectionMode.Loose}
-        panOnDrag={!isCapturingMode}
+        panOnDrag={true}
+        selectionMode={SelectionMode.Partial}
+        multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
+        selectionKeyCode={['Shift', 'Control', 'Meta']}
         zoomOnDoubleClick={false}
         snapToGrid={false}
         snapGrid={[20, 20]}
@@ -1790,18 +1701,6 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         </div>
       ))}
 
-      {/* Current Drawing Box */}
-      {isDrawing && drawBox && (
-        <div
-          className="absolute border-2 border-purple-400 border-dashed bg-purple-400/20 pointer-events-none z-50"
-          style={{
-            transform: `translate(${drawBox.left * vpZoom + vpX}px, ${drawBox.top * vpZoom + vpY}px) scale(${vpZoom})`,
-            transformOrigin: '0 0',
-            width: `${drawBox.width}px`,
-            height: `${drawBox.height}px`,
-          }}
-        />
-      )}
       {/* Zoom Bar */}
       {presentationMode !== 'playing' && (
         <div className="absolute bottom-6 left-6 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2 flex items-center gap-3">

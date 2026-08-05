@@ -713,16 +713,9 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                     </div>
                     
                     <div className="flex justify-between items-center mt-1 pt-1 border-t border-gray-200 dark:border-gray-700">
-                      <span className="text-[10px] text-gray-400">Área: {Math.round(slide.bounds.width)}x{Math.round(slide.bounds.height)}</span>
-                      <button
-                        onClick={() => {
-                          setUpdatingSlideId(slide.id)
-                          setIsCapturingMode(true)
-                        }}
-                        className="text-[10px] text-blue-500 hover:underline"
-                      >
-                        Retomar Área
-                      </button>
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        {slide.nodeIds?.length ? `${slide.nodeIds.length} balão(ões) destacado(s)` : 'Slide enquadrado'}
+                      </span>
                     </div>
                   </div>
                 ))
@@ -730,36 +723,13 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
             </div>
 
             <div className="p-3 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900">
-              {isCapturingMode ? (
-                <>
-                  <div className="text-[11px] text-purple-600 font-medium text-center bg-purple-50 dark:bg-purple-900/30 p-2 rounded border border-purple-200 dark:border-purple-800">
-                    {updatingSlideId ? 'Arraste no mapa para atualizar a área.' : 'Arraste no mapa para criar o slide.'}
-                  </div>
-                  <button 
-                    onClick={() => { setIsCapturingMode(false); setUpdatingSlideId(null); }}
-                    className="w-full py-2 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-400 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Concluir Captura
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button 
-                    onClick={() => window.dispatchEvent(new CustomEvent('create-slide-from-selection'))} 
-                    disabled={!activePresentationId}
-                    className="w-full py-2 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
-                  >
-                    <Sparkles size={14} /> Slide dos Balões Selecionados
-                  </button>
-                  <button 
-                    onClick={() => { setUpdatingSlideId(null); setIsCapturingMode(true) }} 
-                    disabled={!activePresentationId}
-                    className="w-full py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
-                  >
-                    <Plus size={14} /> Novo Slide Por Área (Arrastar)
-                  </button>
-                </>
-              )}
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('create-slide-from-selection'))} 
+                disabled={!activePresentationId}
+                className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 disabled:opacity-50"
+              >
+                <Sparkles size={15} /> + Criar Slide dos Balões Selecionados
+              </button>
               <button disabled={slides.length === 0} onClick={startPlaying} className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50">
                 <Play size={16} fill="currentColor" /> Apresentar
               </button>
