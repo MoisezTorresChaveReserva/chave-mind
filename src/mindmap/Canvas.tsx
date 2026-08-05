@@ -114,6 +114,53 @@ const getHighlightedNodeIdsForSlide = (slide: any, allNodes: Node[]): Set<string
   return highlighted
 }
 
+const getCurrentSlideBounds = (slide: any, allNodes: Node[]): { x: number; y: number; width: number; height: number } => {
+  if (!slide) return { x: 0, y: 0, width: 300, height: 200 }
+
+  let targetNodes: Node[] = []
+  if (slide.nodeIds && slide.nodeIds.length > 0) {
+    targetNodes = allNodes.filter(n => slide.nodeIds.includes(n.id))
+  }
+
+  if (targetNodes.length === 0 && slide.name) {
+    const cleanSlideName = String(slide.name).trim().toLowerCase()
+    const matchingNode = allNodes.find(n => {
+      if (!n.data?.label) return false
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = String(n.data.label)
+      const cleanLabel = (tempDiv.textContent || tempDiv.innerText || '').trim().toLowerCase()
+      return cleanLabel === cleanSlideName || cleanSlideName.includes(cleanLabel) || cleanLabel.includes(cleanSlideName)
+    })
+    if (matchingNode) targetNodes = [matchingNode]
+  }
+
+  if (targetNodes.length > 0) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    targetNodes.forEach(n => {
+      const pos = getNodeAbsolutePosition(n.id, allNodes)
+      const nw = n.measured?.width || (n as any).width || 120
+      const nh = n.measured?.height || (n as any).height || 40
+
+      if (pos.x < minX) minX = pos.x
+      if (pos.y < minY) minY = pos.y
+      if (pos.x + nw > maxX) maxX = pos.x + nw
+      if (pos.y + nh > maxY) maxY = pos.y + nh
+    })
+
+    const paddingX = Math.max(50, (maxX - minX) * 0.2)
+    const paddingY = Math.max(35, (maxY - minY) * 0.2)
+
+    return {
+      x: minX - paddingX,
+      y: minY - paddingY,
+      width: (maxX - minX) + paddingX * 2,
+      height: (maxY - minY) + paddingY * 2
+    }
+  }
+
+  return slide.bounds || { x: 0, y: 0, width: 300, height: 200 }
+}
+
 const BRANCH_COLORS = [
   '#3b82f6', // blue
   '#a855f7', // purple
@@ -739,11 +786,13 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
   }, [nodes, edges, broadcastSync, serializeForBroadcast, mapTags])
 
-  // Presentation Player Engine (Zoom to fixed slide bounds)
+  // Presentation Player Engine (Zoom to target balloons' current bounds)
   useEffect(() => {
     if (presentationMode === 'playing' && slides && slides[currentSlideIndex]) {
       const slide = slides[currentSlideIndex]
-      const activeBounds = slide.bounds
+      const currentNodes = getNodes()
+      
+      const activeBounds = getCurrentSlideBounds(slide, currentNodes)
 
       fitBounds({ x: activeBounds.x, y: activeBounds.y, width: activeBounds.width, height: activeBounds.height }, { duration: 800, padding: 0.15 })
 
@@ -760,7 +809,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         fitView({ duration: 800, padding: 0.2 })
       }
     }
-  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes])
+  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes, getNodes])
 
   // Auto-save logic
   const saveToDb = useCallback(async (currentNodes: Node[], currentEdges: Edge[]) => {
@@ -1745,7 +1794,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       
       {/* Slide Bounds Overlay (Show slides in setup mode) */}
       {presentationMode === 'presentation_setup' && slides && slides.map((slide: any, index: number) => {
-        const box = slide.bounds
+        const box = getCurrentSlideBounds(slide, nodes)
         return (
           <div
             key={slide.id}
