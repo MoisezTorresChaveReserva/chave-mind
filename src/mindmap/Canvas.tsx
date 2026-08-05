@@ -223,6 +223,25 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
             pixelRatio: 4
           })
           downloadDataUrl(dataUrl, `mindmap-${mapId}.svg`)
+        } else if (format === 'pdf') {
+          const dataUrl = await toPng(flowViewport, { 
+            backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
+            pixelRatio: 3,
+            quality: 1
+          })
+          
+          const img = new Image()
+          img.src = dataUrl
+          await new Promise(res => { img.onload = res })
+          
+          const { jsPDF } = await import('jspdf')
+          const pdf = new jsPDF({
+            orientation: img.width >= img.height ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [img.width, img.height]
+          })
+          pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height)
+          pdf.save(`mindmap-${mapId}.pdf`)
         }
       } catch (err) {
         console.error('Failed to export map', err)

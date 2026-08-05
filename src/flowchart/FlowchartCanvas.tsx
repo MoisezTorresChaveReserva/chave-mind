@@ -24,6 +24,7 @@ import { MapNode, MapEdge } from '@/types'
 import { supabase } from '@/supabase/client'
 import { useRealtimeCollab } from '@/hooks/useRealtimeCollab'
 import { Square, Circle, Type } from 'lucide-react'
+import { toPng, toSvg } from 'html-to-image'
 
 const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
 
@@ -227,6 +228,66 @@ function FlowchartCanvasInner({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [nodes, edges, isReadOnly])
+
+  // Handle export events (PNG, JSON, PDF)
+  useEffect(() => {
+    const downloadDataUrl = (dataUrl: string, filename: string) => {
+      const a = document.createElement('a')
+      a.href = dataUrl
+      a.download = filename
+      a.click()
+    }
+
+    const handleExport = async (e: any) => {
+      const format = e.detail.format
+      
+      if (format === 'json') {
+        const data = { nodes, edges }
+        const jsonStr = JSON.stringify(data, null, 2)
+        const dataUrl = `data:text/json;charset=utf-8,${encodeURIComponent(jsonStr)}`
+        downloadDataUrl(dataUrl, `flowchart-${mapId}.json`)
+        return
+      }
+
+      const flowViewport = document.querySelector('.react-flow__viewport') as HTMLElement
+      if (!flowViewport) return
+      
+      try {
+        if (format === 'png') {
+          const dataUrl = await toPng(flowViewport, { 
+            backgroundColor: '#ffffff',
+            pixelRatio: 4,
+            quality: 1
+          })
+          downloadDataUrl(dataUrl, `flowchart-${mapId}.png`)
+        } else if (format === 'pdf') {
+          const dataUrl = await toPng(flowViewport, { 
+            backgroundColor: '#ffffff',
+            pixelRatio: 3,
+            quality: 1
+          })
+          
+          const img = new Image()
+          img.src = dataUrl
+          await new Promise(res => { img.onload = res })
+          
+          const { jsPDF } = await import('jspdf')
+          const pdf = new jsPDF({
+            orientation: img.width >= img.height ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [img.width, img.height]
+          })
+          pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height)
+          pdf.save(`flowchart-${mapId}.pdf`)
+        }
+      } catch (err) {
+        console.error('Failed to export flowchart', err)
+      }
+    }
+
+    window.addEventListener('export-map', handleExport)
+    return () => window.removeEventListener('export-map', handleExport)
+  }, [nodes, edges, mapId])
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((nds) => applyNodeChanges(changes, nds))

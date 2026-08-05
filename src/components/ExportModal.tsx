@@ -11,7 +11,7 @@ export default function ExportModal({
   isOpen: boolean; 
   onClose: () => void; 
   presentations: any[]; 
-  onExportMap: (format: 'png' | 'json') => void;
+  onExportMap: (format: 'png' | 'json' | 'pdf') => void;
   onExportPresentation: (presentationId: string, format: 'pptx' | 'pdf') => void;
 }) {
   const [selectedPresentation, setSelectedPresentation] = useState(presentations[0]?.id || '');
@@ -36,20 +36,27 @@ export default function ExportModal({
           {/* Exportar Mapa */}
           <div>
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Exportar Mapa Completo</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button 
                 onClick={() => { onExportMap('png'); onClose(); }}
-                className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all text-gray-700 dark:text-gray-300 hover:text-blue-600"
+                className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all text-gray-700 dark:text-gray-300 hover:text-blue-600"
               >
-                <ImageIcon size={24} />
-                <span className="text-sm font-medium">Imagem PNG</span>
+                <ImageIcon size={22} />
+                <span className="text-xs font-medium">Imagem PNG</span>
+              </button>
+              <button 
+                onClick={() => { onExportMap('pdf'); onClose(); }}
+                className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all text-gray-700 dark:text-gray-300 hover:text-red-600"
+              >
+                <FileText size={22} />
+                <span className="text-xs font-medium">Documento PDF</span>
               </button>
               <button 
                 onClick={() => { onExportMap('json'); onClose(); }}
-                className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/30 transition-all text-gray-700 dark:text-gray-300 hover:text-green-600"
+                className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/30 transition-all text-gray-700 dark:text-gray-300 hover:text-green-600"
               >
-                <FileJson size={24} />
-                <span className="text-sm font-medium">Dados JSON</span>
+                <FileJson size={22} />
+                <span className="text-xs font-medium">Dados JSON</span>
               </button>
             </div>
           </div>
