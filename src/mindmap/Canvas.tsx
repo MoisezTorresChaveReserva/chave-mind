@@ -548,10 +548,20 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }, 500)
   }, [setNodes, setEdges, applyAutoLayout, layoutMode])
 
+  const isInitialMountRef = useRef<boolean>(true)
+
+  const handleNewCollaboratorJoined = useCallback(() => {
+    if (isReadOnly || nodes.length === 0) return
+    console.log('[Canvas] New collaborator joined, broadcasting current live state...')
+    const { nodes: cleanNodes, edges: cleanEdges } = serializeForBroadcast(nodes, edges)
+    broadcastSync(cleanNodes as Node[], cleanEdges as Edge[], useMapStore.getState().mapTags)
+  }, [isReadOnly, nodes, edges, serializeForBroadcast, broadcastSync])
+
   const { collaborators, broadcastSync, updatePresenceState } = useRealtimeCollab({
     mapId,
     user,
     onRemoteSync: handleRemoteSync,
+    onNewCollaboratorJoined: handleNewCollaboratorJoined,
     isReadOnly
   })
 
@@ -564,14 +574,18 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
   // Add reactive subscription to mapTags
   const mapTags = useMapStore(state => state.mapTags)
 
-  // Debounced broadcast - only send after 300ms of no changes, and never during remote updates
+  // Debounced broadcast - only send after 300ms of no changes, and never during remote updates or initial mount
   const broadcastTimerRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => {
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false
+      return
+    }
     if (isRemoteUpdate.current || nodes.length === 0) return
     
     if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current)
     broadcastTimerRef.current = setTimeout(() => {
-      if (!isRemoteUpdate.current) {
+      if (!isRemoteUpdate.current && !isInitialMountRef.current) {
         const { nodes: cleanNodes, edges: cleanEdges } = serializeForBroadcast(nodes, edges)
         broadcastSync(cleanNodes as Node[], cleanEdges as Edge[], useMapStore.getState().mapTags)
       }

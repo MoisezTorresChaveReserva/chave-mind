@@ -43,11 +43,13 @@ export function useRealtimeCollab({
   mapId,
   user,
   onRemoteSync,
+  onNewCollaboratorJoined,
   isReadOnly = false
 }: {
   mapId: string
   user: any
   onRemoteSync?: (data: { nodes: Node[]; edges: Edge[]; mapTags?: any[] }) => void
+  onNewCollaboratorJoined?: () => void
   isReadOnly?: boolean
 }) {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
@@ -55,10 +57,16 @@ export function useRealtimeCollab({
   const isSubscribedRef = useRef<boolean>(false)
   const sessionId = useRef<string>(generateSessionId())
   const onRemoteSyncRef = useRef(onRemoteSync)
-  
+  const onNewCollaboratorJoinedRef = useRef(onNewCollaboratorJoined)
+  const knownSessionsRef = useRef<Set<string>>(new Set())
+
   useEffect(() => {
     onRemoteSyncRef.current = onRemoteSync
   }, [onRemoteSync])
+
+  useEffect(() => {
+    onNewCollaboratorJoinedRef.current = onNewCollaboratorJoined
+  }, [onNewCollaboratorJoined])
 
   const userColor = useRef<string>(getUserColor(user?.id ? user.id + sessionId.current : sessionId.current))
   const userName = useRef<string>(
@@ -87,6 +95,7 @@ export function useRealtimeCollab({
         const state = channel.presenceState()
         console.log('[Collab] Presence sync triggered. Raw state:', JSON.stringify(state))
         const activeUsers: Collaborator[] = []
+        let hasNewUser = false
 
         Object.keys(state).forEach((key) => {
           const presences = state[key] as any[]
@@ -94,6 +103,9 @@ export function useRealtimeCollab({
             const p = presences[presences.length - 1]
             console.log('[Collab] Found presence for key:', key, 'payload:', p)
             if (p.session_id !== sessionId.current) {
+              if (!knownSessionsRef.current.has(p.session_id)) {
+                hasNewUser = true
+              }
               activeUsers.push({
                 session_id: p.session_id,
                 user_id: p.user_id,
@@ -110,7 +122,13 @@ export function useRealtimeCollab({
         })
 
         console.log('[Collab] Active users (excluding self):', activeUsers.length)
+        knownSessionsRef.current = new Set(activeUsers.map(u => u.session_id))
         setCollaborators(activeUsers)
+
+        if (hasNewUser && onNewCollaboratorJoinedRef.current) {
+          console.log('[Collab] New collaborator joined! Triggering state sync for newcomer...')
+          onNewCollaboratorJoinedRef.current()
+        }
       })
       .on('broadcast', { event: 'nodes_edges_sync' }, ({ payload }) => {
         console.log('[Collab] Received broadcast from:', payload?.sessionId, '(my id:', sessionId.current, ')')

@@ -116,10 +116,20 @@ function FlowchartCanvasInner({
     }, 500)
   }, [isReadOnly, handleDeleteNode, handleNodeChange, handleChangeFormatting])
 
-  const { collaborators, broadcastSync, updatePresenceState } = useRealtimeCollab({
+  const isInitialMountRef = useRef<boolean>(true)
+
+  const handleNewCollaboratorJoined = useCallback(() => {
+    if (isReadOnly || nodes.length === 0) return
+    console.log('[FlowchartCanvas] New collaborator joined, broadcasting current live state...')
+    const { nodes: cleanNodes, edges: cleanEdges } = serializeForBroadcast(nodes, edges)
+    broadcastSync(cleanNodes as Node[], cleanEdges as Edge[])
+  }, [isReadOnly, nodes, edges, serializeForBroadcast, broadcastSync])
+
+  const { collaborators, broadcastSync } = useRealtimeCollab({
     mapId,
     user,
     onRemoteSync: handleRemoteSync,
+    onNewCollaboratorJoined: handleNewCollaboratorJoined,
     isReadOnly
   })
 
@@ -131,11 +141,15 @@ function FlowchartCanvasInner({
 
   const broadcastTimerRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => {
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false
+      return
+    }
     if (isRemoteUpdate.current || nodes.length === 0) return
     
     if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current)
     broadcastTimerRef.current = setTimeout(() => {
-      if (!isRemoteUpdate.current) {
+      if (!isRemoteUpdate.current && !isInitialMountRef.current) {
         const { nodes: cleanNodes, edges: cleanEdges } = serializeForBroadcast(nodes, edges)
         broadcastSync(cleanNodes as Node[], cleanEdges as Edge[])
       }
