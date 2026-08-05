@@ -163,10 +163,14 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
           setPresentations([newPres])
           setActivePresentationId(newPres.id)
           setSlides(legacySlides)
+          // Clean legacy thumbnail to prevent re-migration on refresh
+          await supabase.from('mind_maps').update({ thumbnail: null }).eq('id', map.id)
         }
       } else {
-        // No presentations exist, just initialize empty
+        // No presentations exist
         setPresentations([])
+        setActivePresentationId(null)
+        setSlides([])
       }
     }
     loadPresentations()
@@ -624,6 +628,9 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                     if (activePresentationId) {
                       openConfirm('Excluir Apresentação', 'Tem certeza que deseja excluir esta apresentação? Esta ação não pode ser desfeita.', async () => {
                         await supabase.from('map_presentations').delete().eq('id', activePresentationId)
+                        // Clear thumbnail in mind_maps so legacy migration doesn't resurrect it
+                        await supabase.from('mind_maps').update({ thumbnail: null }).eq('id', map.id)
+
                         const next = presentations.filter(p => p.id !== activePresentationId)
                         setPresentations(next)
                         if (next.length > 0) {

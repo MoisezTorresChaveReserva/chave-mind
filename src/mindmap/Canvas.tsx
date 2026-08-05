@@ -47,21 +47,12 @@ const isNodeVisible = (nodeId: string, allNodes: Node[]): boolean => {
 }
 
 const getNodeAbsolutePosition = (nodeId: string, allNodes: Node[]): { x: number; y: number } => {
-  let x = 0
-  let y = 0
-  let current: Node | undefined = allNodes.find(n => n.id === nodeId)
-  const visited = new Set<string>()
-
-  while (current && !visited.has(current.id)) {
-    visited.add(current.id)
-    x += current.position?.x || 0
-    y += current.position?.y || 0
-    const parentId = current.data?.parent_id
-    if (!parentId) break
-    current = allNodes.find(n => n.id === parentId)
+  const node = allNodes.find(n => n.id === nodeId)
+  if (!node) return { x: 0, y: 0 }
+  return {
+    x: (node as any).computed?.positionAbsolute?.x ?? (node as any).positionAbsolute?.x ?? node.position?.x ?? 0,
+    y: (node as any).computed?.positionAbsolute?.y ?? (node as any).positionAbsolute?.y ?? node.position?.y ?? 0
   }
-
-  return { x, y }
 }
 
 const getHighlightedNodeIdsForSlide = (slide: any, allNodes: Node[]): Set<string> => {
@@ -910,7 +901,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
             }).then(dataUrl => {
               const { mapTags } = useMapStore.getState()
               supabase.from('mind_maps').update({ 
-                thumbnail: JSON.stringify({ slides: slides || [], preview: dataUrl, mapTags }) 
+                thumbnail: JSON.stringify({ preview: dataUrl, mapTags }) 
               }).eq('id', mapId).then()
             }).catch(console.error)
           }
