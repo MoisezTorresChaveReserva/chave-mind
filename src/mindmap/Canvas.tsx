@@ -1488,7 +1488,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
              ...n.style,
              opacity: inSlide ? 1 : 0.15,
              filter: inSlide ? 'none' : 'blur(0.5px) grayscale(80%)',
-             pointerEvents: (inSlide ? 'auto' : 'none') as const,
+             pointerEvents: inSlide ? ('auto' as const) : ('none' as const),
              transition: 'all 0.4s ease'
            },
            data: {
