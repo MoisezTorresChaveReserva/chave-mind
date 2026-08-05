@@ -58,10 +58,10 @@ const getNodeAbsolutePosition = (nodeId: string, allNodes: Node[]): { x: number;
 const getHighlightedNodeIdsForSlide = (slide: any, allNodes: Node[]): Set<string> => {
   const highlighted = new Set<string>()
   
+  // 1. Primary: Match by explicit nodeIds
   if (slide.nodeIds && slide.nodeIds.length > 0) {
     slide.nodeIds.forEach((id: string) => highlighted.add(id))
 
-    // Include sub-branch descendants so the sub-tree under selected balloons is 100% visible
     const addDescendants = (parentId: string) => {
       allNodes.forEach(n => {
         if (n.data?.parent_id === parentId && !highlighted.has(n.id)) {
@@ -73,15 +73,40 @@ const getHighlightedNodeIdsForSlide = (slide: any, allNodes: Node[]): Set<string
     slide.nodeIds.forEach((id: string) => addDescendants(id))
   }
 
-  // Fallback: If nodeIds is empty, match nodes using getNodeAbsolutePosition
-  if (highlighted.size === 0) {
+  // 2. Secondary: Match by slide name (e.g., slide.name === "Processos")
+  if (highlighted.size === 0 && slide.name) {
+    const cleanSlideName = String(slide.name).trim().toLowerCase()
+    const matchingNode = allNodes.find(n => {
+      if (!n.data?.label) return false
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = String(n.data.label)
+      const cleanLabel = (tempDiv.textContent || tempDiv.innerText || '').trim().toLowerCase()
+      return cleanLabel === cleanSlideName || cleanSlideName.includes(cleanLabel) || cleanLabel.includes(cleanSlideName)
+    })
+
+    if (matchingNode) {
+      highlighted.add(matchingNode.id)
+      const addDescendants = (parentId: string) => {
+        allNodes.forEach(n => {
+          if (n.data?.parent_id === parentId && !highlighted.has(n.id)) {
+            highlighted.add(n.id)
+            addDescendants(n.id)
+          }
+        })
+      }
+      addDescendants(matchingNode.id)
+    }
+  }
+
+  // 3. Fallback: Check intersection with slide.bounds
+  if (highlighted.size === 0 && slide.bounds) {
     const b = slide.bounds
     allNodes.forEach(n => {
       const pos = getNodeAbsolutePosition(n.id, allNodes)
       const nw = n.measured?.width || (n as any).width || 120
       const nh = n.measured?.height || (n as any).height || 40
 
-      const inBounds = !(pos.x + nw < b.x - 40 || pos.x > b.x + b.width + 40 || pos.y + nh < b.y - 40 || pos.y > b.y + b.height + 40)
+      const inBounds = !(pos.x + nw < b.x - 60 || pos.x > b.x + b.width + 60 || pos.y + nh < b.y - 60 || pos.y > b.y + b.height + 60)
       if (inBounds) highlighted.add(n.id)
     })
   }
@@ -714,40 +739,11 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
   }, [nodes, edges, broadcastSync, serializeForBroadcast, mapTags])
 
-  // Presentation Player Engine (Zoom to real-time bounds of target balloons)
+  // Presentation Player Engine (Zoom to fixed slide bounds)
   useEffect(() => {
     if (presentationMode === 'playing' && slides && slides[currentSlideIndex]) {
       const slide = slides[currentSlideIndex]
-      const currentNodes = getNodes()
-      
-      const highlightedSet = getHighlightedNodeIdsForSlide(slide, currentNodes)
-      // Only include nodes that are currently visible on canvas (not inside a collapsed branch)
-      const targetNodes = currentNodes.filter(n => highlightedSet.has(n.id) && isNodeVisible(n.id, currentNodes))
-
-      let activeBounds = slide.bounds
-      if (targetNodes.length > 0) {
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-        targetNodes.forEach(n => {
-          const pos = getNodeAbsolutePosition(n.id, currentNodes)
-          const nw = n.measured?.width || (n as any).width || 120
-          const nh = n.measured?.height || (n as any).height || 40
-
-          if (pos.x < minX) minX = pos.x
-          if (pos.y < minY) minY = pos.y
-          if (pos.x + nw > maxX) maxX = pos.x + nw
-          if (pos.y + nh > maxY) maxY = pos.y + nh
-        })
-
-        const paddingX = Math.max(80, (maxX - minX) * 0.2)
-        const paddingY = Math.max(60, (maxY - minY) * 0.2)
-
-        activeBounds = {
-          x: minX - paddingX,
-          y: minY - paddingY,
-          width: (maxX - minX) + paddingX * 2,
-          height: (maxY - minY) + paddingY * 2
-        }
-      }
+      const activeBounds = slide.bounds
 
       fitBounds({ x: activeBounds.x, y: activeBounds.y, width: activeBounds.width, height: activeBounds.height }, { duration: 800, padding: 0.15 })
 
@@ -764,7 +760,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         fitView({ duration: 800, padding: 0.2 })
       }
     }
-  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes, getNodes])
+  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes])
 
   // Auto-save logic
   const saveToDb = useCallback(async (currentNodes: Node[], currentEdges: Edge[]) => {
@@ -1749,26 +1745,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       
       {/* Slide Bounds Overlay (Show slides in setup mode) */}
       {presentationMode === 'presentation_setup' && slides && slides.map((slide: any, index: number) => {
-        const highlightedSet = getHighlightedNodeIdsForSlide(slide, nodes)
-        // Only include nodes that are currently visible on canvas (not inside a collapsed branch)
-        const targetNodes = nodes.filter(n => highlightedSet.has(n.id) && isNodeVisible(n.id, nodes))
-        
-        let box = slide.bounds
-        if (targetNodes.length > 0) {
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-          targetNodes.forEach(n => {
-            const pos = getNodeAbsolutePosition(n.id, nodes)
-            const nw = n.measured?.width || (n as any).width || 120
-            const nh = n.measured?.height || (n as any).height || 40
-            if (pos.x < minX) minX = pos.x
-            if (pos.y < minY) minY = pos.y
-            if (pos.x + nw > maxX) maxX = pos.x + nw
-            if (pos.y + nh > maxY) maxY = pos.y + nh
-          })
-          const paddingX = Math.max(60, (maxX - minX) * 0.15)
-          const paddingY = Math.max(40, (maxY - minY) * 0.15)
-          box = { x: minX - paddingX, y: minY - paddingY, width: (maxX - minX) + paddingX * 2, height: (maxY - minY) + paddingY * 2 }
-        }
+        const box = slide.bounds
         return (
           <div
             key={slide.id}

@@ -551,7 +551,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
           ${customBg ? '' : themeClass}
           ${selected ? 'ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-gray-900 shadow-md' : ''}
           ${data.isDropTarget ? 'ring-4 ring-green-500 border-dashed scale-110 shadow-2xl z-50 ring-offset-2 dark:ring-offset-gray-900 bg-green-50/50 dark:bg-green-900/30' : ''}
-          ${data.isDimmedInPresentation ? 'opacity-15 blur-[0.5px] grayscale pointer-events-none' : ''}
+          ${data.isDimmedInPresentation ? 'pointer-events-none' : ''}
         `}
         style={{
           ...customStyle,
