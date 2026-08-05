@@ -69,6 +69,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       id: n.id,
       type: 'custom',
       position: { x: n.x, y: n.y },
+      selected: false,
       data: { 
         label: n.text, 
         parent_id: n.parent_id, 
@@ -137,6 +138,11 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges)
+
+  // Unselect all nodes on initial load so no balloon is selected by default
+  useEffect(() => {
+    setNodes(nds => nds.map(n => ({ ...n, selected: false })))
+  }, [setNodes])
 
   const isRemoteUpdate = useRef(false)
 
@@ -646,28 +652,80 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
   }, [nodes, edges, broadcastSync, serializeForBroadcast, mapTags])
 
-  // Presentation Player Engine
+  // Presentation Player Engine (Highlight only nodes/edges inside the active slide)
   useEffect(() => {
     if (presentationMode === 'playing' && slides && slides[currentSlideIndex]) {
       const slide = slides[currentSlideIndex]
-      const { x, y, width, height } = slide.bounds
-      fitBounds({ x, y, width, height }, { duration: 800, padding: 0.1 })
+      const activeBounds = slide.bounds
+      const slideRight = activeBounds.x + activeBounds.width
+      const slideBottom = activeBounds.y + activeBounds.height
+
+      fitBounds({ x: activeBounds.x, y: activeBounds.y, width: activeBounds.width, height: activeBounds.height }, { duration: 800, padding: 0.1 })
       
-      if (slide.collapsedNodes) {
-        const collapsedSet = new Set(slide.collapsedNodes)
-        setNodes((nds: Node[]) => applyAutoLayout(nds.map(n => ({
+      const collapsedSet = slide.collapsedNodes ? new Set(slide.collapsedNodes) : null
+
+      setNodes((nds: Node[]) => nds.map(n => {
+        const nx = (n as any).computed?.positionAbsolute?.x ?? n.position.x
+        const ny = (n as any).computed?.positionAbsolute?.y ?? n.position.y
+        const nw = n.measured?.width || 120
+        const nh = n.measured?.height || 40
+
+        const nodeRight = nx + nw
+        const nodeBottom = ny + nh
+
+        // A node is inside the slide if its bounding box intersects with slide bounds
+        const isInside = !(nodeRight < activeBounds.x || nx > slideRight || nodeBottom < activeBounds.y || ny > slideBottom)
+
+        return {
           ...n,
+          selected: false,
           data: {
             ...n.data,
-            collapsed: collapsedSet.has(n.id)
+            collapsed: collapsedSet ? collapsedSet.has(n.id) : n.data.collapsed,
+            isDimmedInPresentation: !isInside
           }
-        }))))
-      }
+        }
+      }))
+
+      setEdges((eds: Edge[]) => eds.map(e => {
+        const sourceNode = getNodes().find(n => n.id === e.source)
+        const targetNode = getNodes().find(n => n.id === e.target)
+
+        const isNodeInBounds = (n?: Node) => {
+          if (!n) return false
+          const nx = (n as any).computed?.positionAbsolute?.x ?? n.position.x
+          const ny = (n as any).computed?.positionAbsolute?.y ?? n.position.y
+          const nw = n.measured?.width || 120
+          const nh = n.measured?.height || 40
+          return !(nx + nw < activeBounds.x || nx > slideRight || ny + nh < activeBounds.y || ny > slideBottom)
+        }
+
+        const isEdgeInside = isNodeInBounds(sourceNode) || isNodeInBounds(targetNode)
+
+        return {
+          ...e,
+          style: {
+            ...e.style,
+            opacity: isEdgeInside ? 1 : 0.1,
+            transition: 'opacity 0.3s ease'
+          }
+        }
+      }))
     } else if (presentationMode === 'edit') {
-      // Return to full view when exiting playing
+      // Clear presentation dimming when exiting playing mode
+      setNodes((nds: Node[]) => nds.map(n => {
+        if (n.data.isDimmedInPresentation) {
+          return { ...n, data: { ...n.data, isDimmedInPresentation: false } }
+        }
+        return n
+      }))
+      setEdges((eds: Edge[]) => eds.map(e => ({
+        ...e,
+        style: { ...e.style, opacity: 1 }
+      })))
       fitView({ duration: 800, padding: 0.2 })
     }
-  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes, applyAutoLayout])
+  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes, setEdges, getNodes])
 
   // Auto-save logic
   const saveToDb = useCallback(async (currentNodes: Node[], currentEdges: Edge[]) => {

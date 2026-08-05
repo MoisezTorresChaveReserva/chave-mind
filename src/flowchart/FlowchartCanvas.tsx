@@ -186,6 +186,7 @@ function FlowchartCanvasInner({
         id: n.id,
         type: 'flowchart',
         position: { x: n.x, y: n.y },
+        selected: false,
         data: { ...data, isReadOnly, onDelete: handleDeleteNode, onChange: handleNodeChange, onChangeFormatting: handleChangeFormatting }
       }
     })
