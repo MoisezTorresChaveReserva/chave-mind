@@ -547,10 +547,11 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
       )}
       <div
         className={`
-          relative px-2 py-1 rounded-xl flex flex-col items-center justify-center w-max transition-all group
+          relative px-2 py-1 rounded-xl flex flex-col items-center justify-center w-max transition-all duration-300 group
           ${customBg ? '' : themeClass}
           ${selected ? 'ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-gray-900 shadow-md' : ''}
           ${data.isDropTarget ? 'ring-4 ring-green-500 border-dashed scale-110 shadow-2xl z-50 ring-offset-2 dark:ring-offset-gray-900 bg-green-50/50 dark:bg-green-900/30' : ''}
+          ${data.isDimmedInPresentation ? 'opacity-15 blur-[0.5px] grayscale pointer-events-none' : ''}
         `}
         style={{
           ...customStyle,

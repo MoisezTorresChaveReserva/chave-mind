@@ -901,7 +901,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       id: generateId(),
       name: slideName,
       bounds,
-      collapsedNodes
+      collapsedNodes,
+      nodeIds: selectedNodes.map(n => n.id)
     }
 
     if (setSlides) {
@@ -1536,8 +1537,83 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
   const playingSlide = exportingSlide || (presentationMode === 'playing' && slides ? slides[currentSlideIndex] : null)
   
-  const finalDisplayNodes = displayNodes
-  const finalDisplayEdges = displayEdges
+  const finalDisplayNodes = useMemo(() => {
+     if (!playingSlide) return displayNodes;
+     const b = playingSlide.bounds;
+     const slideRight = b.x + b.width;
+     const slideBottom = b.y + b.height;
+     const selectedNodeIdsSet = playingSlide.nodeIds ? new Set(playingSlide.nodeIds) : null;
+
+     return displayNodes.map(n => {
+        let isHighlighted = false;
+
+        if (selectedNodeIdsSet) {
+           // Slide created from balloon selection -> ONLY highlighted if node ID is in nodeIds!
+           isHighlighted = selectedNodeIdsSet.has(n.id);
+        } else {
+           // Slide created from dragging box -> Highlighted if node is inside slide bounds!
+           const nx = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x;
+           const ny = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y;
+           const nw = n.measured?.width || (n as any).width || 120;
+           const nh = n.measured?.height || (n as any).height || 40;
+
+           isHighlighted = !(nx + nw < b.x - 40 || nx > slideRight + 40 || ny + nh < b.y - 40 || ny > slideBottom + 40);
+        }
+
+        return {
+           ...n,
+           style: {
+             ...n.style,
+             opacity: isHighlighted ? 1 : 0.15,
+             filter: isHighlighted ? 'none' : 'blur(0.5px) grayscale(80%)',
+             pointerEvents: isHighlighted ? ('auto' as const) : ('none' as const),
+             transition: 'all 0.4s ease'
+           },
+           data: {
+             ...n.data,
+             isDimmedInPresentation: !isHighlighted
+           }
+        }
+     });
+  }, [displayNodes, playingSlide]);
+
+  const finalDisplayEdges = useMemo(() => {
+     if (!playingSlide) return displayEdges;
+     const b = playingSlide.bounds;
+     const slideRight = b.x + b.width;
+     const slideBottom = b.y + b.height;
+     const selectedNodeIdsSet = playingSlide.nodeIds ? new Set(playingSlide.nodeIds) : null;
+
+     const isNodeHighlighted = (n?: Node) => {
+        if (!n) return false;
+        if (selectedNodeIdsSet) {
+           return selectedNodeIdsSet.has(n.id);
+        } else {
+           const nx = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x;
+           const ny = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y;
+           const nw = n.measured?.width || (n as any).width || 120;
+           const nh = n.measured?.height || (n as any).height || 40;
+           return !(nx + nw < b.x - 40 || nx > slideRight + 40 || ny + nh < b.y - 40 || ny > slideBottom + 40);
+        }
+     };
+
+     return displayEdges.map(e => {
+        const sourceNode = displayNodes.find(n => n.id === e.source);
+        const targetNode = displayNodes.find(n => n.id === e.target);
+
+        const isEdgeHighlighted = isNodeHighlighted(sourceNode) || isNodeHighlighted(targetNode);
+
+        return {
+           ...e,
+           style: {
+             ...e.style,
+             opacity: isEdgeHighlighted ? 1 : 0.1,
+             strokeWidth: isEdgeHighlighted ? 3 : 1,
+             transition: 'all 0.4s ease'
+           }
+        }
+     });
+  }, [displayEdges, displayNodes, playingSlide]);
 
   // Mouse Handlers for Drag-to-Select Slide Capture
   const handlePointerDown = (e: React.PointerEvent) => {
