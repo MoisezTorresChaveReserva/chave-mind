@@ -786,12 +786,43 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
   }, [nodes, edges, broadcastSync, serializeForBroadcast, mapTags])
 
-  // Presentation Player Engine (Zoom to target balloons' current bounds)
+  // Presentation Player Engine (Zoom to target balloons' current bounds & auto-expand path)
   useEffect(() => {
     if (presentationMode === 'playing' && slides && slides[currentSlideIndex]) {
       const slide = slides[currentSlideIndex]
       const currentNodes = getNodes()
       
+      // Auto-expand any collapsed parents leading to this slide's balloons
+      const highlightedSet = getHighlightedNodeIdsForSlide(slide, currentNodes)
+      const targetIds = Array.from(highlightedSet)
+
+      const nodesToUncollapse = new Set<string>()
+      targetIds.forEach(id => {
+        let current: Node | undefined = currentNodes.find(n => n.id === id)
+        const visited = new Set<string>()
+        while (current && !visited.has(current.id)) {
+          visited.add(current.id)
+          const parentId = current.data?.parent_id
+          if (!parentId) break
+          nodesToUncollapse.add(parentId as string)
+          current = currentNodes.find(n => n.id === parentId)
+        }
+      })
+
+      if (nodesToUncollapse.size > 0) {
+        setNodes((nds: Node[]) => {
+          let hasChange = false
+          const updated = nds.map(n => {
+            if (nodesToUncollapse.has(n.id) && n.data?.collapsed) {
+              hasChange = true
+              return { ...n, data: { ...n.data, collapsed: false } }
+            }
+            return n
+          })
+          return hasChange ? applyAutoLayout(updated) : nds
+        })
+      }
+
       const activeBounds = getCurrentSlideBounds(slide, currentNodes)
 
       fitBounds({ x: activeBounds.x, y: activeBounds.y, width: activeBounds.width, height: activeBounds.height }, { duration: 800, padding: 0.15 })
@@ -809,7 +840,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
         fitView({ duration: 800, padding: 0.2 })
       }
     }
-  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes, getNodes])
+  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes, getNodes, applyAutoLayout])
 
   // Auto-save logic
   const saveToDb = useCallback(async (currentNodes: Node[], currentEdges: Edge[]) => {
@@ -1794,6 +1825,11 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       
       {/* Slide Bounds Overlay (Show slides in setup mode) */}
       {presentationMode === 'presentation_setup' && slides && slides.map((slide: any, index: number) => {
+        // Hide slide overlay if its target balloon is hidden inside a collapsed parent node
+        const highlightedSet = getHighlightedNodeIdsForSlide(slide, nodes)
+        const isAnyTargetVisible = nodes.some(n => highlightedSet.has(n.id) && isNodeVisible(n.id, nodes))
+        if (!isAnyTargetVisible) return null
+
         const box = getCurrentSlideBounds(slide, nodes)
         return (
           <div
