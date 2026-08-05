@@ -54,14 +54,8 @@ const getNodeAbsolutePosition = (nodeId: string, allNodes: Node[]): { x: number;
 
   while (current && !visited.has(current.id)) {
     visited.add(current.id)
-    const pos = (current as any).computed?.positionAbsolute ?? (current as any).positionAbsolute
-    if (pos) {
-      x += pos.x
-      y += pos.y
-      break
-    }
-    x += current.position.x || 0
-    y += current.position.y || 0
+    x += current.position?.x || 0
+    y += current.position?.y || 0
     const parentId = current.data?.parent_id
     if (!parentId) break
     current = allNodes.find(n => n.id === parentId)
