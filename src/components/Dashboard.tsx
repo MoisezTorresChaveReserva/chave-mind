@@ -28,6 +28,7 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
   const [activeMapMenu, setActiveMapMenu] = useState<string | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [isNavigating, setIsNavigating] = useState(false)
   const [avatar, setAvatar] = useState<string | null>(user?.user_metadata?.avatar_url || null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -165,7 +166,8 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
       .single()
     
     if (data && !error) {
-      router.push(`/map/${data.id}`)
+      setIsNavigating(true)
+      setTimeout(() => router.push(`/map/${data.id}`), 400)
     }
   }
 
@@ -234,7 +236,8 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
         if (dbNodes.length > 0) await supabase.from('nodes').insert(dbNodes)
         if (dbEdges.length > 0) await supabase.from('edges').insert(dbEdges)
 
-        router.push(`/map/${newMap.id}`)
+        setIsNavigating(true)
+        setTimeout(() => router.push(`/map/${newMap.id}`), 400)
       } catch (err: any) {
         alert('Erro ao importar o mapa: ' + err.message)
       }
@@ -447,7 +450,10 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
                     transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
                     key={map.id} 
                     className="group bg-white border border-gray-200/80 rounded-3xl hover:shadow-xl hover:shadow-gray-200/50 hover:border-blue-200 transition-all duration-300 cursor-pointer flex flex-col relative overflow-hidden h-[280px]"
-                    onClick={() => router.push(`/map/${map.id}`)}
+                    onClick={() => {
+                      setIsNavigating(true)
+                      setTimeout(() => router.push(`/map/${map.id}`), 400)
+                    }}
                   >
                     {preview ? (
                       <div className="h-44 w-full bg-gray-50 relative overflow-hidden">
@@ -547,6 +553,42 @@ export default function Dashboard({ initialMaps, user }: { initialMaps: MindMap[
           </main>
         </>
       )}
+
+      {/* Apple-style Minimalist Loading Overlay */}
+      <AnimatePresence>
+        {isNavigating && (
+          <motion.div
+            initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            animate={{ opacity: 1, backdropFilter: 'blur(16px)' }}
+            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/70"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col items-center"
+            >
+              <div className="relative flex items-center justify-center">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  className="w-12 h-12 rounded-full border-[1.5px] border-gray-200 border-t-gray-800"
+                />
+              </div>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+                className="mt-6 text-[11px] font-medium text-gray-400 tracking-[0.2em] uppercase"
+              >
+                Carregando espaço de trabalho
+              </motion.p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
