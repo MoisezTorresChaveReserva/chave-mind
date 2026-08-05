@@ -976,7 +976,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       id: newNodeId,
       type: 'custom',
       position: { x: node.position.x, y: node.position.y },
-      data: { label: '', parent_id: node.data.parent_id, isNew: true }
+      data: { label: '', parent_id: node.data.parent_id, isNew: true, mapId }
     }
     setNodes(nds => {
       const nodeIndex = nds.findIndex(n => n.id === nodeId)
@@ -1039,7 +1039,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     
     ideas.forEach(label => {
       const id = generateId()
-      newNodes.push({ id, type: 'custom', position: {x:0, y:0}, data: { label, parent_id: parentId } })
+      newNodes.push({ id, type: 'custom', position: {x:0, y:0}, data: { label, parent_id: parentId, mapId } })
       newEdges.push({ id: generateId(), source: parentId, target: id, type: 'bezier' })
     })
     

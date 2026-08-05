@@ -38,7 +38,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   
   const nodeTagsIds = (data.tags as string[]) || []
   const nodeTags = mapTags.filter(t => nodeTagsIds.includes(t.id))
-  const { setNodes, setEdges } = useReactFlow()
+  const { setNodes, setEdges, getNodes } = useReactFlow()
   const updateNodeInternals = useUpdateNodeInternals()
 
   useEffect(() => {
@@ -462,7 +462,14 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                     onChange={e => setNewTagText(e.target.value)}
                     onKeyDown={async (e) => {
                       if (e.key === 'Enter' && newTagText.trim()) {
-                        const mapId = data.mapId as string
+                        const rootNode = getNodes().find((n: any) => !n.data?.parent_id)
+                        const mapId = (data.mapId as string) || (rootNode?.data?.mapId as string)
+                        
+                        if (!mapId) {
+                          alert('Erro ao criar etiqueta: ID do mapa não foi carregado corretamente.')
+                          return
+                        }
+                        
                         const tempId = generateId()
                         const newTag = { id: tempId, text: newTagText.trim(), color: newTagColor }
                         addMapTag(newTag) // Optimistic
@@ -487,7 +494,14 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
                     onClick={async (e) => {
                       e.stopPropagation()
                       if (newTagText.trim()) {
-                        const mapId = data.mapId as string
+                        const rootNode = getNodes().find((n: any) => !n.data?.parent_id)
+                        const mapId = (data.mapId as string) || (rootNode?.data?.mapId as string)
+                        
+                        if (!mapId) {
+                          alert('Erro ao criar etiqueta: ID do mapa não foi carregado corretamente.')
+                          return
+                        }
+
                         const tempId = generateId()
                         const newTag = { id: tempId, text: newTagText.trim(), color: newTagColor }
                         addMapTag(newTag) // Optimistic
