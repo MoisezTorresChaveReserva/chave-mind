@@ -1022,7 +1022,11 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       const ny = (n as any).computed?.positionAbsolute?.y || (n as any).positionAbsolute?.y || n.position.y
       const nw = n.measured?.width || 100
       const nh = n.measured?.height || 40
-      return cx >= nx && cx <= nx + nw && cy >= ny && cy <= ny + nh
+      
+      // Add padding to prevent accidental reparenting during vertical sibling reordering
+      const paddingX = nw * 0.15
+      const paddingY = nh * 0.35
+      return cx >= nx + paddingX && cx <= nx + nw - paddingX && cy >= ny + paddingY && cy <= ny + nh - paddingY
     })
     
     setNodes(nds => {
@@ -1098,14 +1102,16 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
     if (targetNode) {
       // Reparenting
-      setNodes(nds => applyAutoLayout(nds.map(n => {
+      const layouted = applyAutoLayout(allNodes.map(n => {
         if (n.id === node.id) {
           const isTargetRoot = !targetNode.data.parent_id
           const newDir = isTargetRoot ? (node.position.x < targetNode.position.x ? 'left' : 'right') : (targetNode.data.direction === 'left' ? 'left' : 'right')
           return { ...n, data: { ...n.data, parent_id: targetNode.id, isDropTarget: false, direction: newDir } }
         }
         return { ...n, data: { ...n.data, isDropTarget: false } }
-      })))
+      }))
+      setNodes(layouted)
+      setTimeout(() => setNodes(layouted), 50) // Ensure React Flow drop position doesn't override layout
 
       setEdges(eds => {
         const filtered = eds.filter(e => e.target !== node.id)
@@ -1134,7 +1140,9 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       const withoutSiblings = newNodesList.filter((n: any) => n.data.parent_id !== parentId)
       const finalNodes = [...withoutSiblings, ...siblings.map(s => newNodesList.find(n => n.id === s.id) || s)]
       
-      setNodes(applyAutoLayout(finalNodes as Node[]))
+      const layouted = applyAutoLayout(finalNodes as Node[])
+      setNodes(layouted)
+      setTimeout(() => setNodes(layouted), 50) // Ensure React Flow drop position doesn't override layout
     }
   }, [getNodes, getEdges, setNodes, setEdges, applyAutoLayout, takeSnapshot])
 
