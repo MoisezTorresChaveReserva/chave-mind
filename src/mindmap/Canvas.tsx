@@ -86,7 +86,45 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     data: { label: 'Raiz do Mapa' }
   }]
 
-  const defaultEdges: Edge[] = initialEdges.map((e: any) => ({
+  // Helper to purge duplicate/stale edges and auto-heal missing edges based on parent_id
+  const sanitizeEdges = useCallback((nodesList: Node[], edgesList: Edge[]) => {
+    const parentMap = new Map<string, string>()
+    nodesList.forEach(n => {
+      if (n.data.parent_id) {
+        parentMap.set(n.id, n.data.parent_id as string)
+      }
+    })
+
+    const seenTargets = new Set<string>()
+    const cleanEdgesList: Edge[] = []
+
+    // Keep only edges whose source matches the node's current parent_id
+    edgesList.forEach(e => {
+      const expectedParent = parentMap.get(e.target)
+      if (expectedParent && e.source === expectedParent && !seenTargets.has(e.target)) {
+        seenTargets.add(e.target)
+        cleanEdgesList.push(e)
+      }
+    })
+
+    // Auto-create missing edges for nodes that have a parent_id
+    parentMap.forEach((parentId, childId) => {
+      if (!seenTargets.has(childId)) {
+        seenTargets.add(childId)
+        cleanEdgesList.push({
+          id: generateId(),
+          source: parentId,
+          target: childId,
+          type: 'bezier',
+          style: { stroke: '#ec4899', strokeWidth: 3 }
+        })
+      }
+    })
+
+    return cleanEdgesList
+  }, [])
+
+  const rawEdges: Edge[] = initialEdges.map((e: any) => ({
     id: e.id,
     source: e.source,
     target: e.target,
@@ -95,21 +133,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     style: { stroke: e.color || '#ec4899', strokeWidth: 3 }
   }))
 
-  // Auto-heal missing edges based on parent_id
-  defaultNodes.forEach(node => {
-    if (node.data.parent_id) {
-      const edgeExists = defaultEdges.some(e => e.target === node.id)
-      if (!edgeExists) {
-        defaultEdges.push({
-          id: generateId(),
-          source: node.data.parent_id as string,
-          target: node.id,
-          type: 'bezier',
-          style: { stroke: '#ec4899', strokeWidth: 3 }
-        })
-      }
-    }
-  })
+  const defaultEdges = sanitizeEdges(defaultNodes, rawEdges)
 
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges)
@@ -561,7 +585,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       return mergedNodes as Node[]
     })
 
-    setEdges(remoteEdges)
+    setEdges((currentEdges) => sanitizeEdges(remoteNodes as Node[], remoteEdges))
     setTimeout(() => {
       isRemoteUpdate.current = false
     }, 500)
@@ -694,8 +718,14 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       }
       
       if (dbEdges.length > 0) {
+        const validEdgeIds = dbEdges.map(e => e.id)
+        if (validEdgeIds.length > 0) {
+          await supabase.from('edges').delete().eq('map_id', mapId).not('id', 'in', `(${validEdgeIds.join(',')})`)
+        }
         const res = await supabase.from('edges').upsert(dbEdges)
         edgesError = res.error
+      } else {
+        await supabase.from('edges').delete().eq('map_id', mapId)
       }
 
       if (error || edgesError) {
@@ -1142,27 +1172,19 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
     if (targetNode) {
       // Reparenting
-      const layouted = applyAutoLayout(allNodes.map(n => {
+      const updatedNodes = allNodes.map(n => {
         if (n.id === node.id) {
           const isTargetRoot = !targetNode.data.parent_id
           const newDir = isTargetRoot ? (node.position.x < targetNode.position.x ? 'left' : 'right') : (targetNode.data.direction === 'left' ? 'left' : 'right')
           return { ...n, data: { ...n.data, parent_id: targetNode.id, isDropTarget: false, direction: newDir } }
         }
         return { ...n, data: { ...n.data, isDropTarget: false } }
-      }))
+      })
+      const layouted = applyAutoLayout(updatedNodes as Node[])
       setNodes(layouted)
       setTimeout(() => setNodes(layouted), 50) // Ensure React Flow drop position doesn't override layout
 
-      setEdges(eds => {
-        const filtered = eds.filter(e => e.target !== node.id)
-        return [...filtered, {
-          id: generateId(),
-          source: targetNode.id,
-          target: node.id,
-          type: 'bezier',
-          style: { stroke: '#ec4899', strokeWidth: 3 }
-        }]
-      })
+      setEdges(eds => sanitizeEdges(layouted, eds))
     } else {
       // Reordering siblings based on dropped Y coordinate
       const parentId = node.data.parent_id
