@@ -1,3 +1,4 @@
+// Export Modal Component with PDF, PNG, JSON, PPTX support
 import React, { useState } from 'react';
 import { X, Image as ImageIcon, FileJson, Presentation, FileText, Download } from 'lucide-react';
 
