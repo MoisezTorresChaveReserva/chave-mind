@@ -29,6 +29,64 @@ const nodeTypes = {
   custom: CustomNode,
 }
 
+const getNodeAbsolutePosition = (nodeId: string, allNodes: Node[]): { x: number; y: number } => {
+  let x = 0
+  let y = 0
+  let current: Node | undefined = allNodes.find(n => n.id === nodeId)
+  const visited = new Set<string>()
+
+  while (current && !visited.has(current.id)) {
+    visited.add(current.id)
+    const pos = (current as any).computed?.positionAbsolute ?? (current as any).positionAbsolute
+    if (pos) {
+      x += pos.x
+      y += pos.y
+      break
+    }
+    x += current.position.x || 0
+    y += current.position.y || 0
+    const parentId = current.data?.parent_id
+    if (!parentId) break
+    current = allNodes.find(n => n.id === parentId)
+  }
+
+  return { x, y }
+}
+
+const getHighlightedNodeIdsForSlide = (slide: any, allNodes: Node[]): Set<string> => {
+  const highlighted = new Set<string>()
+  
+  if (slide.nodeIds && slide.nodeIds.length > 0) {
+    slide.nodeIds.forEach((id: string) => highlighted.add(id))
+
+    // Include sub-branch descendants so the sub-tree under selected balloons is 100% visible
+    const addDescendants = (parentId: string) => {
+      allNodes.forEach(n => {
+        if (n.data?.parent_id === parentId && !highlighted.has(n.id)) {
+          highlighted.add(n.id)
+          addDescendants(n.id)
+        }
+      })
+    }
+    slide.nodeIds.forEach((id: string) => addDescendants(id))
+  }
+
+  // Fallback: If nodeIds is empty, match nodes using getNodeAbsolutePosition
+  if (highlighted.size === 0) {
+    const b = slide.bounds
+    allNodes.forEach(n => {
+      const pos = getNodeAbsolutePosition(n.id, allNodes)
+      const nw = n.measured?.width || (n as any).width || 120
+      const nh = n.measured?.height || (n as any).height || 40
+
+      const inBounds = !(pos.x + nw < b.x - 40 || pos.x > b.x + b.width + 40 || pos.y + nh < b.y - 40 || pos.y > b.y + b.height + 40)
+      if (inBounds) highlighted.add(n.id)
+    })
+  }
+
+  return highlighted
+}
+
 const BRANCH_COLORS = [
   '#3b82f6', // blue
   '#a855f7', // purple
@@ -660,32 +718,31 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       const slide = slides[currentSlideIndex]
       const currentNodes = getNodes()
       
+      const highlightedSet = getHighlightedNodeIdsForSlide(slide, currentNodes)
+      const targetNodes = currentNodes.filter(n => highlightedSet.has(n.id))
+
       let activeBounds = slide.bounds
-      if (slide.nodeIds && slide.nodeIds.length > 0) {
-        const targetNodes = currentNodes.filter(n => slide.nodeIds!.includes(n.id))
-        if (targetNodes.length > 0) {
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-          targetNodes.forEach(n => {
-            const nx = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x
-            const ny = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y
-            const nw = n.measured?.width || (n as any).width || 120
-            const nh = n.measured?.height || (n as any).height || 40
+      if (targetNodes.length > 0) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        targetNodes.forEach(n => {
+          const pos = getNodeAbsolutePosition(n.id, currentNodes)
+          const nw = n.measured?.width || (n as any).width || 120
+          const nh = n.measured?.height || (n as any).height || 40
 
-            if (nx < minX) minX = nx
-            if (ny < minY) minY = ny
-            if (nx + nw > maxX) maxX = nx + nw
-            if (ny + nh > maxY) maxY = ny + nh
-          })
+          if (pos.x < minX) minX = pos.x
+          if (pos.y < minY) minY = pos.y
+          if (pos.x + nw > maxX) maxX = pos.x + nw
+          if (pos.y + nh > maxY) maxY = pos.y + nh
+        })
 
-          const paddingX = Math.max(80, (maxX - minX) * 0.2)
-          const paddingY = Math.max(60, (maxY - minY) * 0.2)
+        const paddingX = Math.max(80, (maxX - minX) * 0.2)
+        const paddingY = Math.max(60, (maxY - minY) * 0.2)
 
-          activeBounds = {
-            x: minX - paddingX,
-            y: minY - paddingY,
-            width: (maxX - minX) + paddingX * 2,
-            height: (maxY - minY) + paddingY * 2
-          }
+        activeBounds = {
+          x: minX - paddingX,
+          y: minY - paddingY,
+          width: (maxX - minX) + paddingX * 2,
+          height: (maxY - minY) + paddingY * 2
         }
       }
 
@@ -695,7 +752,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     } else {
       // Clear presentation dimming when exiting playing mode
       setNodes((nds: Node[]) => nds.map(n => {
-        if (n.data?.isDimmedInPresentation || n.selected) {
+        if ((n.data as any)?.isDimmedInPresentation || n.selected) {
           return { ...n, selected: false, data: { ...n.data, isDimmedInPresentation: false } }
         }
         return n
@@ -884,6 +941,9 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       return
     }
 
+    const currentNodes = getNodes()
+    const selectedIds = selectedNodes.map(n => n.id)
+
     let minX = Infinity
     let minY = Infinity
     let maxX = -Infinity
@@ -891,15 +951,14 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     const names: string[] = []
 
     selectedNodes.forEach(n => {
-      const absX = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x
-      const absY = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y
+      const pos = getNodeAbsolutePosition(n.id, currentNodes)
       const nw = n.measured?.width || (n as any).width || 120
       const nh = n.measured?.height || (n as any).height || 40
 
-      if (absX < minX) minX = absX
-      if (absY < minY) minY = absY
-      if (absX + nw > maxX) maxX = absX + nw
-      if (absY + nh > maxY) maxY = absY + nh
+      if (pos.x < minX) minX = pos.x
+      if (pos.y < minY) minY = pos.y
+      if (pos.x + nw > maxX) maxX = pos.x + nw
+      if (pos.y + nh > maxY) maxY = pos.y + nh
 
       if (n.data?.label) {
         const tempDiv = document.createElement('div')
@@ -930,7 +989,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       name: slideName,
       bounds,
       collapsedNodes,
-      nodeIds: selectedNodes.map(n => n.id)
+      nodeIds: selectedIds
     }
 
     if (setSlides) {
@@ -1574,26 +1633,11 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
            return n
         });
      }
-     const b = playingSlide.bounds;
-     const slideRight = b.x + b.width;
-     const slideBottom = b.y + b.height;
-     const selectedNodeIdsSet = playingSlide.nodeIds ? new Set(playingSlide.nodeIds) : null;
+
+     const highlightedSet = getHighlightedNodeIdsForSlide(playingSlide, displayNodes);
 
      return displayNodes.map(n => {
-        let isHighlighted = false;
-
-        if (selectedNodeIdsSet) {
-           // Slide created from balloon selection -> ONLY highlighted if node ID is in nodeIds!
-           isHighlighted = selectedNodeIdsSet.has(n.id);
-        } else {
-           // Slide created from dragging box -> Highlighted if node is inside slide bounds!
-           const nx = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x;
-           const ny = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y;
-           const nw = n.measured?.width || (n as any).width || 120;
-           const nh = n.measured?.height || (n as any).height || 40;
-
-           isHighlighted = !(nx + nw < b.x - 40 || nx > slideRight + 40 || ny + nh < b.y - 40 || ny > slideBottom + 40);
-        }
+        const isHighlighted = highlightedSet.has(n.id);
 
         return {
            ...n,
@@ -1614,29 +1658,10 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
   const finalDisplayEdges = useMemo(() => {
      if (presentationMode !== 'playing' || !playingSlide) return displayEdges;
-     const b = playingSlide.bounds;
-     const slideRight = b.x + b.width;
-     const slideBottom = b.y + b.height;
-     const selectedNodeIdsSet = playingSlide.nodeIds ? new Set(playingSlide.nodeIds) : null;
-
-     const isNodeHighlighted = (n?: Node) => {
-        if (!n) return false;
-        if (selectedNodeIdsSet) {
-           return selectedNodeIdsSet.has(n.id);
-        } else {
-           const nx = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x;
-           const ny = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y;
-           const nw = n.measured?.width || (n as any).width || 120;
-           const nh = n.measured?.height || (n as any).height || 40;
-           return !(nx + nw < b.x - 40 || nx > slideRight + 40 || ny + nh < b.y - 40 || ny > slideBottom + 40);
-        }
-     };
+     const highlightedSet = getHighlightedNodeIdsForSlide(playingSlide, displayNodes);
 
      return displayEdges.map(e => {
-        const sourceNode = displayNodes.find(n => n.id === e.source);
-        const targetNode = displayNodes.find(n => n.id === e.target);
-
-        const isEdgeHighlighted = isNodeHighlighted(sourceNode) || isNodeHighlighted(targetNode);
+        const isEdgeHighlighted = highlightedSet.has(e.source) || highlightedSet.has(e.target);
 
         return {
            ...e,
@@ -1720,20 +1745,42 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       />
       
       {/* Slide Bounds Overlay (Show slides in setup mode) */}
-      {presentationMode === 'presentation_setup' && slides && slides.map((slide: any, index: number) => (
-        <div
-          key={slide.id}
-          className="absolute border-2 border-purple-500 bg-purple-500/10 pointer-events-none flex items-start justify-start p-2 z-10"
-          style={{
-            transform: `translate(${slide.bounds.x * vpZoom + vpX}px, ${slide.bounds.y * vpZoom + vpY}px) scale(${vpZoom})`,
-            transformOrigin: '0 0',
-            width: `${slide.bounds.width}px`,
-            height: `${slide.bounds.height}px`,
-          }}
-        >
-          <span className="bg-purple-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm" style={{ transform: `scale(${1/vpZoom})`, transformOrigin: 'top left' }}>Slide {index + 1}</span>
-        </div>
-      ))}
+      {presentationMode === 'presentation_setup' && slides && slides.map((slide: any, index: number) => {
+        const highlightedSet = getHighlightedNodeIdsForSlide(slide, nodes)
+        const targetNodes = nodes.filter(n => highlightedSet.has(n.id))
+        let box = slide.bounds
+        if (targetNodes.length > 0) {
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+          targetNodes.forEach(n => {
+            const pos = getNodeAbsolutePosition(n.id, nodes)
+            const nw = n.measured?.width || (n as any).width || 120
+            const nh = n.measured?.height || (n as any).height || 40
+            if (pos.x < minX) minX = pos.x
+            if (pos.y < minY) minY = pos.y
+            if (pos.x + nw > maxX) maxX = pos.x + nw
+            if (pos.y + nh > maxY) maxY = pos.y + nh
+          })
+          const paddingX = Math.max(60, (maxX - minX) * 0.15)
+          const paddingY = Math.max(40, (maxY - minY) * 0.15)
+          box = { x: minX - paddingX, y: minY - paddingY, width: (maxX - minX) + paddingX * 2, height: (maxY - minY) + paddingY * 2 }
+        }
+        return (
+          <div
+            key={slide.id}
+            className="absolute border-2 border-purple-500/80 bg-purple-500/10 pointer-events-none rounded-xl z-40 transition-all duration-300"
+            style={{
+              transform: `translate(${box.x * vpZoom + vpX}px, ${box.y * vpZoom + vpY}px) scale(${vpZoom})`,
+              transformOrigin: '0 0',
+              width: `${box.width}px`,
+              height: `${box.height}px`,
+            }}
+          >
+            <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-br-lg shadow-sm" style={{ transform: `scale(${1/vpZoom})`, transformOrigin: 'top left' }}>
+              Slide {index + 1}: {slide.name || 'Sem nome'}
+            </span>
+          </div>
+        )
+      })}
 
       {/* Zoom Bar */}
       {presentationMode !== 'playing' && (
