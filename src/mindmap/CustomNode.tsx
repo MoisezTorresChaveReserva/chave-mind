@@ -24,6 +24,7 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
   const [activeMenu, setActiveMenu] = useState<'none' | 'color' | 'image' | 'link' | 'icon' | 'tag'>('none')
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null)
   const [tempUrl, setTempUrl] = useState('')
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [newTagText, setNewTagText] = useState('')
   const [newTagColor, setNewTagColor] = useState('#ec4899')
   const [editingTagId, setEditingTagId] = useState<string | null>(null)
@@ -610,7 +611,48 @@ const CustomNode = ({ data, selected, id, positionAbsoluteX, positionAbsoluteY }
         )}
 
         {!!data.image_url && (
-          <img src={data.image_url as string} alt="Node media" className="max-w-[180px] max-h-[120px] object-contain rounded mb-1 border border-gray-100 dark:border-gray-800 relative z-10" />
+          <>
+            <img 
+              src={data.image_url as string} 
+              alt="Node media" 
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsPreviewOpen(true)
+              }}
+              onDoubleClick={(e) => e.stopPropagation()}
+              className="max-w-[180px] max-h-[120px] object-contain rounded mb-1 border border-gray-100 dark:border-gray-800 relative z-10 cursor-pointer hover:opacity-90 transition-all hover:scale-[1.02] shadow-sm"
+              title="Clique para ver em tamanho real"
+            />
+            {isPreviewOpen && createPortal(
+              <div
+                className="fixed inset-0 z-[99999] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 cursor-zoom-out"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setIsPreviewOpen(false)
+                }}
+              >
+                <div className="relative max-w-[92vw] max-h-[92vh] flex items-center justify-center pointer-events-auto">
+                  <img
+                    src={data.image_url as string}
+                    alt="Visualização em tamanho real"
+                    className="max-w-full max-h-[88vh] object-contain rounded-2xl shadow-2xl border border-white/20"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsPreviewOpen(false)
+                    }}
+                    className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                    title="Fechar"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>,
+              document.body
+            )}
+          </>
         )}
 
         <div className="flex flex-col w-full relative z-10">

@@ -568,13 +568,16 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
   }, [setNodes, setEdges, applyAutoLayout, layoutMode])
 
   const isInitialMountRef = useRef<boolean>(true)
+  const broadcastSyncRef = useRef<any>(null)
 
   const handleNewCollaboratorJoined = useCallback(() => {
     if (isReadOnly || nodes.length === 0) return
     console.log('[Canvas] New collaborator joined, broadcasting current live state...')
     const { nodes: cleanNodes, edges: cleanEdges } = serializeForBroadcast(nodes, edges)
-    broadcastSync(cleanNodes as Node[], cleanEdges as Edge[], useMapStore.getState().mapTags)
-  }, [isReadOnly, nodes, edges, serializeForBroadcast, broadcastSync])
+    if (broadcastSyncRef.current) {
+      broadcastSyncRef.current(cleanNodes as Node[], cleanEdges as Edge[], useMapStore.getState().mapTags)
+    }
+  }, [isReadOnly, nodes, edges, serializeForBroadcast])
 
   const { collaborators, broadcastSync, updatePresenceState } = useRealtimeCollab({
     mapId,
@@ -583,6 +586,10 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     onNewCollaboratorJoined: handleNewCollaboratorJoined,
     isReadOnly
   })
+
+  useEffect(() => {
+    broadcastSyncRef.current = broadcastSync
+  }, [broadcastSync])
 
   useEffect(() => {
     if (onCollaboratorsChange) {
