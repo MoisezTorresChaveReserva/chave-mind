@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { MindMap, MapNode, MapEdge, MapPresentation, Slide } from '@/types'
-import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight, Undo2, Redo2, Focus, Layers, Download, Network, ListTree, GitMerge } from 'lucide-react'
+import { ChevronLeft, Cloud, Settings, MoreHorizontal, Moon, Sun, Palette, Play, MonitorPlay, X, Plus, GripVertical, Trash2, ChevronRight, Undo2, Redo2, Focus, Layers, Download, Network, ListTree, GitMerge, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Canvas from '@/mindmap/Canvas'
 import FlowchartCanvas from '@/flowchart/FlowchartCanvas'
@@ -743,13 +743,22 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                   </button>
                 </>
               ) : (
-                <button 
-                  onClick={() => { setUpdatingSlideId(null); setIsCapturingMode(true) }} 
-                  disabled={!activePresentationId}
-                  className="w-full py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-purple-600 border border-purple-200 dark:border-purple-800 rounded-lg text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
-                >
-                  <Plus size={16} /> Novo Slide
-                </button>
+                <>
+                  <button 
+                    onClick={() => window.dispatchEvent(new CustomEvent('create-slide-from-selection'))} 
+                    disabled={!activePresentationId}
+                    className="w-full py-2 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
+                  >
+                    <Sparkles size={14} /> Slide dos Balões Selecionados
+                  </button>
+                  <button 
+                    onClick={() => { setUpdatingSlideId(null); setIsCapturingMode(true) }} 
+                    disabled={!activePresentationId}
+                    className="w-full py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
+                  >
+                    <Plus size={14} /> Novo Slide Por Área (Arrastar)
+                  </button>
+                </>
               )}
               <button disabled={slides.length === 0} onClick={startPlaying} className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50">
                 <Play size={16} fill="currentColor" /> Apresentar

@@ -22,6 +22,7 @@ import { supabase } from '@/supabase/client'
 import { useMapStore } from '@/store/mapStore'
 import { useHistoryStore } from '@/store/historyStore'
 import { useRealtimeCollab } from '@/hooks/useRealtimeCollab'
+import { MousePointerClick, Sparkles } from 'lucide-react'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -848,6 +849,74 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
   }, [saveToDb, getNodes, getEdges])
 
+  const handleCreateSlideFromSelection = useCallback(() => {
+    const selectedNodes = getNodes().filter(n => n.selected)
+    if (selectedNodes.length === 0) {
+      alert('Selecione pelo menos um balão no mapa para criar o slide automaticamente.')
+      return
+    }
+
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    const names: string[] = []
+
+    selectedNodes.forEach(n => {
+      const absX = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x
+      const absY = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y
+      const nw = n.measured?.width || (n as any).width || 120
+      const nh = n.measured?.height || (n as any).height || 40
+
+      if (absX < minX) minX = absX
+      if (absY < minY) minY = absY
+      if (absX + nw > maxX) maxX = absX + nw
+      if (absY + nh > maxY) maxY = absY + nh
+
+      if (n.data?.label) {
+        const tempDiv = document.createElement('div')
+        tempDiv.innerHTML = String(n.data.label)
+        const cleanText = (tempDiv.textContent || tempDiv.innerText || '').trim()
+        if (cleanText) names.push(cleanText)
+      }
+    })
+
+    const paddingX = Math.max(70, (maxX - minX) * 0.15)
+    const paddingY = Math.max(50, (maxY - minY) * 0.15)
+
+    const bounds = {
+      x: minX - paddingX,
+      y: minY - paddingY,
+      width: (maxX - minX) + paddingX * 2,
+      height: (maxY - minY) + paddingY * 2
+    }
+
+    const slideName = names.length > 0 
+      ? (names.length === 1 ? names[0] : `${names.slice(0, 2).join(' + ')}${names.length > 2 ? ` (+${names.length - 2})` : ''}`)
+      : `Slide (${selectedNodes.length} balões)`
+
+    const collapsedNodes = getNodes().filter(n => n.data?.collapsed).map(n => n.id)
+
+    const newSlide = {
+      id: generateId(),
+      name: slideName,
+      bounds,
+      collapsedNodes
+    }
+
+    if (setSlides) {
+      setSlides((prev: any) => [...prev, newSlide])
+    }
+
+    // Deselect nodes after slide creation
+    setNodes(nds => nds.map(n => ({ ...n, selected: false })))
+  }, [getNodes, setNodes, setSlides])
+
+  useEffect(() => {
+    window.addEventListener('create-slide-from-selection', handleCreateSlideFromSelection)
+    return () => window.removeEventListener('create-slide-from-selection', handleCreateSlideFromSelection)
+  }, [handleCreateSlideFromSelection])
+
   useEffect(() => {
     const handleSetDepthLevel = (e: any) => {
       if (isReadOnly) return
@@ -1567,6 +1636,29 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
     >
+
+      {/* Presentation Setup Floating Controls */}
+      {presentationMode === 'presentation_setup' && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-purple-200 dark:border-purple-800 shadow-2xl rounded-2xl px-4 py-2 text-xs font-semibold animate-in fade-in slide-in-from-top-3 duration-200">
+          {nodes.filter(n => n.selected).length > 0 ? (
+            <>
+              <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1.5 font-bold">
+                <MousePointerClick size={16} /> {nodes.filter(n => n.selected).length} {nodes.filter(n => n.selected).length === 1 ? 'balão selecionado' : 'balões selecionados'}
+              </span>
+              <button
+                onClick={handleCreateSlideFromSelection}
+                className="ml-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-md transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer font-bold"
+              >
+                <Sparkles size={14} /> Criar Slide dos Balões Selecionados
+              </button>
+            </>
+          ) : (
+            <span className="text-gray-600 dark:text-gray-300 flex items-center gap-2">
+              <MousePointerClick size={16} className="text-purple-500" /> Clique em 1 ou mais balões para criar o slide automaticamente
+            </span>
+          )}
+        </div>
+      )}
 
       <ReactFlow
         nodes={finalDisplayNodes}
