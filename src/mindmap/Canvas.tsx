@@ -654,30 +654,57 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
   }, [nodes, edges, broadcastSync, serializeForBroadcast, mapTags])
 
-  // Presentation Player Engine (Zoom to active slide bounds)
+  // Presentation Player Engine (Zoom to real-time bounds of target balloons)
   useEffect(() => {
     if (presentationMode === 'playing' && slides && slides[currentSlideIndex]) {
       const slide = slides[currentSlideIndex]
-      const activeBounds = slide.bounds
-      fitBounds({ x: activeBounds.x, y: activeBounds.y, width: activeBounds.width, height: activeBounds.height }, { duration: 800, padding: 0.1 })
+      const currentNodes = getNodes()
       
-      if (slide.collapsedNodes) {
-        const collapsedSet = new Set(slide.collapsedNodes)
-        setNodes((nds: Node[]) => nds.map(n => ({
-          ...n,
-          selected: false,
-          data: {
-            ...n.data,
-            collapsed: collapsedSet.has(n.id)
+      let activeBounds = slide.bounds
+      if (slide.nodeIds && slide.nodeIds.length > 0) {
+        const targetNodes = currentNodes.filter(n => slide.nodeIds!.includes(n.id))
+        if (targetNodes.length > 0) {
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+          targetNodes.forEach(n => {
+            const nx = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x
+            const ny = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y
+            const nw = n.measured?.width || (n as any).width || 120
+            const nh = n.measured?.height || (n as any).height || 40
+
+            if (nx < minX) minX = nx
+            if (ny < minY) minY = ny
+            if (nx + nw > maxX) maxX = nx + nw
+            if (ny + nh > maxY) maxY = ny + nh
+          })
+
+          const paddingX = Math.max(80, (maxX - minX) * 0.2)
+          const paddingY = Math.max(60, (maxY - minY) * 0.2)
+
+          activeBounds = {
+            x: minX - paddingX,
+            y: minY - paddingY,
+            width: (maxX - minX) + paddingX * 2,
+            height: (maxY - minY) + paddingY * 2
           }
-        })))
-      } else {
-        setNodes((nds: Node[]) => nds.map(n => ({ ...n, selected: false })))
+        }
       }
-    } else if (presentationMode === 'edit') {
-      fitView({ duration: 800, padding: 0.2 })
+
+      fitBounds({ x: activeBounds.x, y: activeBounds.y, width: activeBounds.width, height: activeBounds.height }, { duration: 800, padding: 0.15 })
+
+      setNodes((nds: Node[]) => nds.map(n => ({ ...n, selected: false })))
+    } else {
+      // Clear presentation dimming when exiting playing mode
+      setNodes((nds: Node[]) => nds.map(n => {
+        if (n.data?.isDimmedInPresentation || n.selected) {
+          return { ...n, selected: false, data: { ...n.data, isDimmedInPresentation: false } }
+        }
+        return n
+      }))
+      if (presentationMode === 'edit') {
+        fitView({ duration: 800, padding: 0.2 })
+      }
     }
-  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes])
+  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes, getNodes])
 
   // Auto-save logic
   const saveToDb = useCallback(async (currentNodes: Node[], currentEdges: Edge[]) => {
@@ -1539,7 +1566,14 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
   const playingSlide = exportingSlide || (presentationMode === 'playing' && slides ? slides[currentSlideIndex] : null)
   
   const finalDisplayNodes = useMemo(() => {
-     if (!playingSlide) return displayNodes;
+     if (presentationMode !== 'playing' || !playingSlide) {
+        return displayNodes.map(n => {
+           if ((n.data as any)?.isDimmedInPresentation) {
+              return { ...n, data: { ...n.data, isDimmedInPresentation: false } }
+           }
+           return n
+        });
+     }
      const b = playingSlide.bounds;
      const slideRight = b.x + b.width;
      const slideBottom = b.y + b.height;
@@ -1576,10 +1610,10 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
            }
         }
      });
-  }, [displayNodes, playingSlide]);
+  }, [displayNodes, playingSlide, presentationMode]);
 
   const finalDisplayEdges = useMemo(() => {
-     if (!playingSlide) return displayEdges;
+     if (presentationMode !== 'playing' || !playingSlide) return displayEdges;
      const b = playingSlide.bounds;
      const slideRight = b.x + b.width;
      const slideBottom = b.y + b.height;
@@ -1614,7 +1648,7 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
            }
         }
      });
-  }, [displayEdges, displayNodes, playingSlide]);
+  }, [displayEdges, displayNodes, playingSlide, presentationMode]);
 
   return (
     <div className="w-full h-full relative overflow-hidden">
