@@ -14,6 +14,7 @@ import { toJpeg } from 'html-to-image'
 import { useMapStore } from '@/store/mapStore'
 import { useHistoryStore } from '@/store/historyStore'
 import { useGlobalPresence } from '@/hooks/useGlobalPresence'
+import CustomDialogModal from '@/components/CustomDialogModal'
 
 export default function Editor({ map, initialNodes, initialEdges, initialMapTags = [], initialNodeTags = [], user, isReadOnly = false }: { map: MindMap, initialNodes: MapNode[], initialEdges: MapEdge[], initialMapTags?: any[], initialNodeTags?: any[], user: any, isReadOnly?: boolean }) {
   // Track global presence across the platform
@@ -45,6 +46,70 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
   const isFlowchart = map.map_type === 'flowchart'
   
   const [collaborators, setCollaborators] = useState<any[]>([])
+
+  // Custom Apple-style Dialog State
+  const [dialogConfig, setDialogConfig] = useState<{
+    isOpen: boolean
+    type: 'alert' | 'confirm' | 'prompt'
+    title: string
+    message?: string
+    defaultValue?: string
+    placeholder?: string
+    confirmText?: string
+    cancelText?: string
+    isDestructive?: boolean
+    onConfirm: (val?: string) => void
+  }>({
+    isOpen: false,
+    type: 'alert',
+    title: '',
+    onConfirm: () => {}
+  })
+
+  const openPrompt = (title: string, defaultValue: string = '', onConfirm: (val: string) => void, placeholder = '') => {
+    setDialogConfig({
+      isOpen: true,
+      type: 'prompt',
+      title,
+      defaultValue,
+      placeholder,
+      confirmText: 'Salvar',
+      cancelText: 'Cancelar',
+      onConfirm: (val) => {
+        setDialogConfig(prev => ({ ...prev, isOpen: false }))
+        if (val !== undefined && val.trim() !== '') onConfirm(val.trim())
+      }
+    })
+  }
+
+  const openConfirm = (title: string, message: string, onConfirm: () => void, isDestructive = false) => {
+    setDialogConfig({
+      isOpen: true,
+      type: 'confirm',
+      title,
+      message,
+      confirmText: isDestructive ? 'Excluir' : 'Confirmar',
+      cancelText: 'Cancelar',
+      isDestructive,
+      onConfirm: () => {
+        setDialogConfig(prev => ({ ...prev, isOpen: false }))
+        onConfirm()
+      }
+    })
+  }
+
+  const openAlert = (title: string, message?: string) => {
+    setDialogConfig({
+      isOpen: true,
+      type: 'alert',
+      title,
+      message,
+      confirmText: 'OK',
+      onConfirm: () => {
+        setDialogConfig(prev => ({ ...prev, isOpen: false }))
+      }
+    })
+  }
 
   // Zustand Store
   const { mapTags, setMapTags } = useMapStore()
@@ -341,7 +406,7 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                             setActivePresentationId(p.id)
                             setSlides(p.slides || [])
                             if ((p.slides || []).length === 0) {
-                              alert('Adicione pelo menos um slide antes de apresentar!')
+                              openAlert('Apresentação Vazia', 'Adicione pelo menos um slide antes de apresentar!')
                               return
                             }
                             setCurrentSlideIndex(0)
@@ -525,28 +590,29 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
               </select>
               <div className="flex gap-2">
                 <button 
-                  onClick={async () => {
-                    const name = prompt('Nome da nova apresentação:')
-                    if (name) {
+                  onClick={() => {
+                    openPrompt('Nova Apresentação', '', async (name) => {
                       const { data } = await supabase.from('map_presentations').insert({ map_id: map.id, name, slides: [] }).select().single()
                       if (data) {
-                        setPresentations([...presentations, data])
+                        setPresentations(prev => [...prev, data])
                         setActivePresentationId(data.id)
                         setSlides([])
                       }
-                    }
+                    }, 'Nome da apresentação...')
                   }}
                   className="flex-1 text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 py-1.5 rounded font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
                 >
                   + Nova
                 </button>
                 <button 
-                  onClick={async () => {
-                     const name = prompt('Renomear apresentação:', presentations.find(p => p.id === activePresentationId)?.name || '')
-                     if (name && activePresentationId) {
+                  onClick={() => {
+                    const currentName = presentations.find(p => p.id === activePresentationId)?.name || ''
+                    openPrompt('Renomear Apresentação', currentName, async (name) => {
+                      if (activePresentationId) {
                         await supabase.from('map_presentations').update({ name }).eq('id', activePresentationId)
                         setPresentations(prev => prev.map(p => p.id === activePresentationId ? { ...p, name } : p))
-                     }
+                      }
+                    })
                   }}
                   disabled={!activePresentationId}
                   className="flex-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 py-1.5 rounded font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
@@ -554,18 +620,20 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
                   Renomear
                 </button>
                 <button 
-                  onClick={async () => {
-                    if (activePresentationId && confirm('Excluir esta apresentação?')) {
-                      await supabase.from('map_presentations').delete().eq('id', activePresentationId)
-                      const next = presentations.filter(p => p.id !== activePresentationId)
-                      setPresentations(next)
-                      if (next.length > 0) {
-                        setActivePresentationId(next[0].id)
-                        setSlides(next[0].slides || [])
-                      } else {
-                        setActivePresentationId(null)
-                        setSlides([])
-                      }
+                  onClick={() => {
+                    if (activePresentationId) {
+                      openConfirm('Excluir Apresentação', 'Tem certeza que deseja excluir esta apresentação? Esta ação não pode ser desfeita.', async () => {
+                        await supabase.from('map_presentations').delete().eq('id', activePresentationId)
+                        const next = presentations.filter(p => p.id !== activePresentationId)
+                        setPresentations(next)
+                        if (next.length > 0) {
+                          setActivePresentationId(next[0].id)
+                          setSlides(next[0].slides || [])
+                        } else {
+                          setActivePresentationId(null)
+                          setSlides([])
+                        }
+                      }, true)
                     }
                   }}
                   disabled={!activePresentationId}
@@ -796,6 +864,19 @@ export default function Editor({ map, initialNodes, initialEdges, initialMapTags
              window.dispatchEvent(new CustomEvent('export-presentation', { detail: { presentation, format } }))
           }
         }}
+      />
+      <CustomDialogModal
+        isOpen={dialogConfig.isOpen}
+        type={dialogConfig.type}
+        title={dialogConfig.title}
+        message={dialogConfig.message}
+        defaultValue={dialogConfig.defaultValue}
+        placeholder={dialogConfig.placeholder}
+        confirmText={dialogConfig.confirmText}
+        cancelText={dialogConfig.cancelText}
+        isDestructive={dialogConfig.isDestructive}
+        onConfirm={dialogConfig.onConfirm}
+        onCancel={() => setDialogConfig(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   )
