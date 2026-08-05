@@ -211,10 +211,17 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       
       try {
         if (format === 'png') {
-          const dataUrl = await toPng(flowViewport, { backgroundColor: theme === 'dark' ? '#111827' : '#ffffff' })
+          const dataUrl = await toPng(flowViewport, { 
+            backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
+            pixelRatio: 4,
+            quality: 1
+          })
           downloadDataUrl(dataUrl, `mindmap-${mapId}.png`)
         } else if (format === 'svg') {
-          const dataUrl = await toSvg(flowViewport, { backgroundColor: theme === 'dark' ? '#111827' : '#ffffff' })
+          const dataUrl = await toSvg(flowViewport, { 
+            backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
+            pixelRatio: 4
+          })
           downloadDataUrl(dataUrl, `mindmap-${mapId}.svg`)
         }
       } catch (err) {
