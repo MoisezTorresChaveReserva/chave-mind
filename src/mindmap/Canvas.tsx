@@ -1467,70 +1467,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
 
   const playingSlide = exportingSlide || (presentationMode === 'playing' && slides ? slides[currentSlideIndex] : null)
   
-  const finalDisplayNodes = useMemo(() => {
-     if (!playingSlide) return displayNodes;
-     const b = playingSlide.bounds;
-     const slideRight = b.x + b.width;
-     const slideBottom = b.y + b.height;
-
-     return displayNodes.map(n => {
-        const nx = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x;
-        const ny = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y;
-        const nw = n.measured?.width || (n as any).width || 120;
-        const nh = n.measured?.height || (n as any).height || 40;
-
-        // Check if node intersects slide bounds with a 40px buffer margin
-        const inSlide = !(nx + nw < b.x - 40 || nx > slideRight + 40 || ny + nh < b.y - 40 || ny > slideBottom + 40);
-
-        return {
-           ...n,
-           style: {
-             ...n.style,
-             opacity: inSlide ? 1 : 0.15,
-             filter: inSlide ? 'none' : 'blur(0.5px) grayscale(80%)',
-             pointerEvents: inSlide ? ('auto' as const) : ('none' as const),
-             transition: 'all 0.4s ease'
-           },
-           data: {
-             ...n.data,
-             isDimmedInPresentation: !inSlide
-           }
-        }
-     });
-  }, [displayNodes, playingSlide]);
-
-  const finalDisplayEdges = useMemo(() => {
-     if (!playingSlide) return displayEdges;
-     const b = playingSlide.bounds;
-     const slideRight = b.x + b.width;
-     const slideBottom = b.y + b.height;
-
-     return displayEdges.map(e => {
-        const sourceNode = displayNodes.find(n => n.id === e.source);
-        const targetNode = displayNodes.find(n => n.id === e.target);
-        
-        const isNodeInBounds = (n?: Node) => {
-          if (!n) return false;
-          const nx = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x;
-          const ny = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y;
-          const nw = n.measured?.width || (n as any).width || 120;
-          const nh = n.measured?.height || (n as any).height || 40;
-          return !(nx + nw < b.x - 40 || nx > slideRight + 40 || ny + nh < b.y - 40 || ny > slideBottom + 40);
-        };
-
-        const inSlide = isNodeInBounds(sourceNode) || isNodeInBounds(targetNode);
-
-        return {
-           ...e,
-           style: {
-             ...e.style,
-             opacity: inSlide ? 1 : 0.1,
-             strokeWidth: inSlide ? 3 : 1,
-             transition: 'all 0.4s ease'
-           }
-        }
-     });
-  }, [displayEdges, displayNodes, playingSlide]);
+  const finalDisplayNodes = displayNodes
+  const finalDisplayEdges = displayEdges
 
   // Mouse Handlers for Drag-to-Select Slide Capture
   const handlePointerDown = (e: React.PointerEvent) => {
