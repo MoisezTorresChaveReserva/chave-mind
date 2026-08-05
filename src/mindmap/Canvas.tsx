@@ -1063,9 +1063,9 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       const nw = n.measured?.width || 100
       const nh = n.measured?.height || 40
       
-      // Add padding to prevent accidental reparenting during vertical sibling reordering
-      const paddingX = nw * 0.15
-      const paddingY = nh * 0.35
+      // Responsive padding: small for child nodes so they are easy targets to drop onto
+      const paddingX = Math.min(nw * 0.05, 8)
+      const paddingY = Math.min(nh * 0.1, 6)
       return cx >= nx + paddingX && cx <= nx + nw - paddingX && cy >= ny + paddingY && cy <= ny + nh - paddingY
     })
     
