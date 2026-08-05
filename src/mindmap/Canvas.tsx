@@ -29,6 +29,23 @@ const nodeTypes = {
   custom: CustomNode,
 }
 
+const isNodeVisible = (nodeId: string, allNodes: Node[]): boolean => {
+  let current: Node | undefined = allNodes.find(n => n.id === nodeId)
+  const visited = new Set<string>()
+
+  while (current && !visited.has(current.id)) {
+    visited.add(current.id)
+    const parentId = current.data?.parent_id
+    if (!parentId) break // Root node is always visible
+
+    const parent = allNodes.find(n => n.id === parentId)
+    if (!parent) break
+    if (parent.data?.collapsed) return false // Hidden because a parent is collapsed
+    current = parent
+  }
+  return true
+}
+
 const getNodeAbsolutePosition = (nodeId: string, allNodes: Node[]): { x: number; y: number } => {
   let x = 0
   let y = 0
@@ -719,7 +736,8 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       const currentNodes = getNodes()
       
       const highlightedSet = getHighlightedNodeIdsForSlide(slide, currentNodes)
-      const targetNodes = currentNodes.filter(n => highlightedSet.has(n.id))
+      // Only include nodes that are currently visible on canvas (not inside a collapsed branch)
+      const targetNodes = currentNodes.filter(n => highlightedSet.has(n.id) && isNodeVisible(n.id, currentNodes))
 
       let activeBounds = slide.bounds
       if (targetNodes.length > 0) {
@@ -1747,7 +1765,9 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
       {/* Slide Bounds Overlay (Show slides in setup mode) */}
       {presentationMode === 'presentation_setup' && slides && slides.map((slide: any, index: number) => {
         const highlightedSet = getHighlightedNodeIdsForSlide(slide, nodes)
-        const targetNodes = nodes.filter(n => highlightedSet.has(n.id))
+        // Only include nodes that are currently visible on canvas (not inside a collapsed branch)
+        const targetNodes = nodes.filter(n => highlightedSet.has(n.id) && isNodeVisible(n.id, nodes))
+        
         let box = slide.bounds
         if (targetNodes.length > 0) {
           let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
