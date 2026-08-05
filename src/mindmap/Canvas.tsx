@@ -652,80 +652,30 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
     }
   }, [nodes, edges, broadcastSync, serializeForBroadcast, mapTags])
 
-  // Presentation Player Engine (Highlight only nodes/edges inside the active slide)
+  // Presentation Player Engine (Zoom to active slide bounds)
   useEffect(() => {
     if (presentationMode === 'playing' && slides && slides[currentSlideIndex]) {
       const slide = slides[currentSlideIndex]
       const activeBounds = slide.bounds
-      const slideRight = activeBounds.x + activeBounds.width
-      const slideBottom = activeBounds.y + activeBounds.height
-
       fitBounds({ x: activeBounds.x, y: activeBounds.y, width: activeBounds.width, height: activeBounds.height }, { duration: 800, padding: 0.1 })
       
-      const collapsedSet = slide.collapsedNodes ? new Set(slide.collapsedNodes) : null
-
-      setNodes((nds: Node[]) => nds.map(n => {
-        const nx = (n as any).computed?.positionAbsolute?.x ?? n.position.x
-        const ny = (n as any).computed?.positionAbsolute?.y ?? n.position.y
-        const nw = n.measured?.width || 120
-        const nh = n.measured?.height || 40
-
-        const nodeRight = nx + nw
-        const nodeBottom = ny + nh
-
-        // A node is inside the slide if its bounding box intersects with slide bounds
-        const isInside = !(nodeRight < activeBounds.x || nx > slideRight || nodeBottom < activeBounds.y || ny > slideBottom)
-
-        return {
+      if (slide.collapsedNodes) {
+        const collapsedSet = new Set(slide.collapsedNodes)
+        setNodes((nds: Node[]) => nds.map(n => ({
           ...n,
           selected: false,
           data: {
             ...n.data,
-            collapsed: collapsedSet ? collapsedSet.has(n.id) : n.data.collapsed,
-            isDimmedInPresentation: !isInside
+            collapsed: collapsedSet.has(n.id)
           }
-        }
-      }))
-
-      setEdges((eds: Edge[]) => eds.map(e => {
-        const sourceNode = getNodes().find(n => n.id === e.source)
-        const targetNode = getNodes().find(n => n.id === e.target)
-
-        const isNodeInBounds = (n?: Node) => {
-          if (!n) return false
-          const nx = (n as any).computed?.positionAbsolute?.x ?? n.position.x
-          const ny = (n as any).computed?.positionAbsolute?.y ?? n.position.y
-          const nw = n.measured?.width || 120
-          const nh = n.measured?.height || 40
-          return !(nx + nw < activeBounds.x || nx > slideRight || ny + nh < activeBounds.y || ny > slideBottom)
-        }
-
-        const isEdgeInside = isNodeInBounds(sourceNode) || isNodeInBounds(targetNode)
-
-        return {
-          ...e,
-          style: {
-            ...e.style,
-            opacity: isEdgeInside ? 1 : 0.1,
-            transition: 'opacity 0.3s ease'
-          }
-        }
-      }))
+        })))
+      } else {
+        setNodes((nds: Node[]) => nds.map(n => ({ ...n, selected: false })))
+      }
     } else if (presentationMode === 'edit') {
-      // Clear presentation dimming when exiting playing mode
-      setNodes((nds: Node[]) => nds.map(n => {
-        if (n.data.isDimmedInPresentation) {
-          return { ...n, data: { ...n.data, isDimmedInPresentation: false } }
-        }
-        return n
-      }))
-      setEdges((eds: Edge[]) => eds.map(e => ({
-        ...e,
-        style: { ...e.style, opacity: 1 }
-      })))
       fitView({ duration: 800, padding: 0.2 })
     }
-  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes, setEdges, getNodes])
+  }, [presentationMode, currentSlideIndex, slides, fitBounds, fitView, setNodes])
 
   // Auto-save logic
   const saveToDb = useCallback(async (currentNodes: Node[], currentEdges: Edge[]) => {
@@ -1519,32 +1469,65 @@ function Flow({ mapId, initialNodes, initialEdges, initialNodeTags = [], setSave
   
   const finalDisplayNodes = useMemo(() => {
      if (!playingSlide) return displayNodes;
+     const b = playingSlide.bounds;
+     const slideRight = b.x + b.width;
+     const slideBottom = b.y + b.height;
+
      return displayNodes.map(n => {
-        const b = playingSlide.bounds;
-        const x = n.position.x;
-        const y = n.position.y;
-        const inSlide = x >= b.x - 100 && x <= b.x + b.width + 100 && y >= b.y - 100 && y <= b.y + b.height + 100;
+        const nx = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x;
+        const ny = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y;
+        const nw = n.measured?.width || (n as any).width || 120;
+        const nh = n.measured?.height || (n as any).height || 40;
+
+        // Check if node intersects slide bounds with a 40px buffer margin
+        const inSlide = !(nx + nw < b.x - 40 || nx > slideRight + 40 || ny + nh < b.y - 40 || ny > slideBottom + 40);
+
         return {
            ...n,
-           style: { ...n.style, opacity: inSlide ? 1 : 0.2, transition: 'opacity 0.5s ease' }
+           style: {
+             ...n.style,
+             opacity: inSlide ? 1 : 0.15,
+             filter: inSlide ? 'none' : 'blur(0.5px) grayscale(80%)',
+             pointerEvents: (inSlide ? 'auto' : 'none') as const,
+             transition: 'all 0.4s ease'
+           },
+           data: {
+             ...n.data,
+             isDimmedInPresentation: !inSlide
+           }
         }
      });
   }, [displayNodes, playingSlide]);
 
   const finalDisplayEdges = useMemo(() => {
      if (!playingSlide) return displayEdges;
+     const b = playingSlide.bounds;
+     const slideRight = b.x + b.width;
+     const slideBottom = b.y + b.height;
+
      return displayEdges.map(e => {
         const sourceNode = displayNodes.find(n => n.id === e.source);
         const targetNode = displayNodes.find(n => n.id === e.target);
-        if (!sourceNode || !targetNode) return e;
-        const b = playingSlide.bounds;
-        const inSlide = sourceNode.position.x >= b.x - 100 && sourceNode.position.x <= b.x + b.width + 100 && 
-           targetNode.position.x >= b.x - 100 && targetNode.position.x <= b.x + b.width + 100 &&
-           sourceNode.position.y >= b.y - 100 && sourceNode.position.y <= b.y + b.height + 100 &&
-           targetNode.position.y >= b.y - 100 && targetNode.position.y <= b.y + b.height + 100;
+        
+        const isNodeInBounds = (n?: Node) => {
+          if (!n) return false;
+          const nx = (n as any).computed?.positionAbsolute?.x ?? (n as any).positionAbsolute?.x ?? n.position.x;
+          const ny = (n as any).computed?.positionAbsolute?.y ?? (n as any).positionAbsolute?.y ?? n.position.y;
+          const nw = n.measured?.width || (n as any).width || 120;
+          const nh = n.measured?.height || (n as any).height || 40;
+          return !(nx + nw < b.x - 40 || nx > slideRight + 40 || ny + nh < b.y - 40 || ny > slideBottom + 40);
+        };
+
+        const inSlide = isNodeInBounds(sourceNode) || isNodeInBounds(targetNode);
+
         return {
            ...e,
-           style: { ...e.style, opacity: inSlide ? 1 : 0.2, transition: 'opacity 0.5s ease' }
+           style: {
+             ...e.style,
+             opacity: inSlide ? 1 : 0.1,
+             strokeWidth: inSlide ? 3 : 1,
+             transition: 'all 0.4s ease'
+           }
         }
      });
   }, [displayEdges, displayNodes, playingSlide]);
